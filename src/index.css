@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-court-green: #1B4A3F;
+  --color-rattan-gold: #B98B4E;
+  --color-shuttle-cream: #F7F4EC;
+  --color-chalk-line: #F1EDE0;
+  --color-net-charcoal: #22261F;
+  --color-smash-lime: #C9DB4A;
+
+  --color-status-success: #C9DB4A;
+  --color-status-pending: #E8A33D;
+  --color-status-danger: #C1543A;
+  --color-status-inactive: #B9B6A8;
+
+  --font-fraunces: "Fraunces", serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+/* Custom Glassmorphism Styles */
+.glass-surface-light {
+  background: rgba(247, 244, 236, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(34, 38, 31, 0.08);
+}
+
+.glass-surface-dark {
+  background: rgba(27, 74, 63, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(241, 237, 224, 0.15);
+  box-shadow: 0 8px 32px rgba(34, 38, 31, 0.15);
+}
+
+/* Base Body Styles */
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background-color: #F7F4EC; /* shuttle-cream */
+  color: #22261F; /* net-charcoal */
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Court Line System Signatures */
+.doubles-sideline-divider {
+  height: 9px;
+  border-top: 1.5px solid #B98B4E; /* rattan-gold */
+  border-bottom: 1.5px solid #B98B4E;
+  background: transparent;
+  width: 100%;
+}
+
+.short-service-line-active {
+  border-bottom: 3px solid #C9DB4A; /* smash-lime */
+}
+
+/* Net hover transition */
+.net-hover-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.net-hover-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background-color: #C9DB4A; /* smash-lime */
+  transition: width 0.3s ease;
+}
+
+.net-hover-card:hover::after {
+  width: 100%;
+}
+
+/* Custom styles to prevent mobile browser scrollbars */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for scoreboard grid horizontal scrolling */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(27, 74, 63, 0.05);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(27, 74, 63, 0.3);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(27, 74, 63, 0.5);
+}
+
+/* Corner-post Tiang Net (L-Post Aksen) */
+.l-post-corner {
+  position: relative;
+}
+.l-post-corner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 2.5px solid #B98B4E; /* rattan-gold */
+  border-left: 2.5px solid #B98B4E;
+  pointer-events: none;
+}
+
+/* Scroll Morph Hero Utilities & Variables */
+@utility perspective-1000 {
+  perspective: 1000px;
+}
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+

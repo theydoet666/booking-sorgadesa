@@ -1,0 +1,8 @@
+# robots.txt for https://sorgadesa.belega.id/
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /dashboard
+
+Sitemap: https://sorgadesa.belega.id/sitemap.xml
