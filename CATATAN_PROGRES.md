@@ -1,9 +1,9 @@
 # 📋 Rangkuman Progres Kerja & Panduan Lanjutan
 **Proyek:** Aplikasi Booking Lapangan Badminton & POS — Sorga Desa Belega  
 **Tech Stack:** React (Vite) + Tailwind CSS + Supabase (PostgreSQL, Auth, Storage)  
-**Tanggal Update:** 24 Agustus 2026  
+**Tanggal Update:** 26 Agustus 2026  
 **Domain Target:** `https://sorgadesa.belega.id/`  
-**Status Terakhir:** 🟢 Selesai Dibangun, Di-Hardening, SEO Ready & Siap Upload ke Hosting  
+**Status Terakhir:** 🟢 Selesai Dibangun, Di-Hardening, PRD Sync & Production Ready  
 
 ---
 
@@ -52,6 +52,18 @@
    - Sinkronisasi otomatis ke form pemesanan (`BottomSheetModal.jsx`) dengan tombol "Salin" nomor rekening.
 2. **Keamanan Database (Fase 1 - 4):**
    - Anti-bentrok jadwal (Exclusion Constraint), RLS multi-role (Admin vs Kasir vs Publik), dan view aman `public_jadwal_lapangan`.
+
+---
+
+### E. Sinkronisasi Dokumen PRD v2.1 (26 Agustus 2026)
+1. **Audit & Pembaruan PRD.md:**
+   - Mengubah versi PRD dari 2.0 ke **2.1 (Production Ready)**.
+   - Mendokumentasikan pengamanan data pelanggan melalui View `public_jadwal_lapangan`.
+   - Mendokumentasikan fitur rekening bank dinamis + tombol *Copy Rekening*.
+   - Mendokumentasikan DDL SQL lengkap (Migration 01-04), Security Definer helpers (`is_staff`, `is_admin`, `get_current_user_role`), trigger proteksi role `protect_profile_role`, pembatalan otomatis booking expired `auto_cancel_expired_pending_bookings`, dan Storage Bucket `assets` RLS.
+   - Mendokumentasikan On-Page & Technical SEO (JSON-LD, Open Graph, `sitemap.xml`, `robots.txt`, `.htaccess`).
+2. **Pengujian Build Production:**
+   - Eksekusi `npm run build` sukses tanpa error (`exit code 0`, 1853 module transformed).
 
 ---
 
