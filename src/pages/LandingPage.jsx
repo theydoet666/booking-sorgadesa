@@ -18,7 +18,7 @@ import BottomTabBar from '../components/BottomTabBar';
 import { DEFAULT_LOGO, updateFavicon } from '../utils/logoHelper';
 import { showAlert } from '../utils/alertHelper';
 import { getTodayLocalStr } from '../utils/dateHelper';
-import IntroAnimation from '../components/ui/scroll-morph-hero';
+import ModernHero from '../components/ModernHero';
 
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState('beranda');
@@ -246,12 +246,20 @@ export default function LandingPage() {
       </header>
 
       {/* 2. Hero Section */}
-      <section id="hero" className="max-w-6xl mx-auto w-full px-4 pt-20 sm:pt-28 pb-6 md:pb-12 relative z-10">
-        <IntroAnimation onOpenBooking={() => handleOpenBooking()} galleryImages={gallery} settings={settings} />
+      <section id="hero" className="max-w-6xl mx-auto w-full px-4 pt-20 sm:pt-24 pb-4 sm:pb-8 relative z-10">
+        <ModernHero 
+          settings={settings}
+          courts={courts}
+          bookings={bookings}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => setSelectedDate(date)}
+          onOpenBooking={(courtId, time) => handleOpenBooking(courtId, time)}
+          testimonials={testimonials}
+        />
       </section>
 
       {/* Doubles sideline divider */}
-      <div className="max-w-6xl mx-auto w-full px-4 my-4">
+      <div className="max-w-6xl mx-auto w-full px-4 my-2 sm:my-4">
         <div className="doubles-sideline-divider"></div>
       </div>
 

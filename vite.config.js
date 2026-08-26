@@ -6,6 +6,9 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
     watch: {
       ignored: ['**/dist/**', '**/*.zip', '**/.git/**']
     }

@@ -16,11 +16,12 @@ export const MOCK_SETTINGS = {
   atas_nama_rekening: "Sorga Desa Belega",
   
   // Teks Landing Page
-  hero_badge: "Gianyar Bali Badminton Community",
-  hero_title: "Main Badminton di Sorga Desa Belega",
+  hero_badge: "Gedung Olahraga Premium",
+  hero_title: "Siap Untuk Smash Keras?",
   hero_sub_badge: "Kualitas Lapangan Kelas Dunia",
   hero_sub_title: "Main Seru & Nyaman",
-  hero_desc: "Dapatkan pengalaman bermain badminton terbaik dengan lapangan standar BWF, lantai vinyl premium tebal, dan pencahayaan optimal di Gianyar. Cek jadwal dan booking langsung sekarang!",
+  hero_desc: "Pesan lapangan badminton standar internasional sekarang. Lantai karpet premium, pencahayaan optimal, dan sirkulasi udara terbaik untuk pengalaman bermain maksimal.",
+  hero_bg_image: "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=2070&auto=format&fit=crop",
   court_badge: "Pilihan Fasilitas",
   court_title: "Daftar Lapangan",
   schedule_badge: "Live Ketersediaan",

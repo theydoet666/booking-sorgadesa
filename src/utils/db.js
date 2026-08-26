@@ -696,5 +696,46 @@ export const db = {
     } catch (err) {
       return { success: false, message: err.message };
     }
+  },
+
+  async uploadHeroImage(file) {
+    const validation = this.validateImageFile(file);
+    if (!validation.valid) {
+      return { success: false, message: validation.message };
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `hero-bg-${Date.now()}.${fileExt}`;
+        const filePath = `hero/${fileName}`;
+
+        // Upload to bucket 'assets'
+        const { error: uploadError } = await supabase.storage
+          .from('assets')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+        return { success: true, url: data.publicUrl };
+      } catch (err) {
+        console.error("Gagal upload background hero ke Supabase storage:", err);
+        return { success: false, message: err.message };
+      }
+    }
+
+    // Local Base64 storage fallback
+    try {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+      return { success: true, url: base64Data };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
   }
 };

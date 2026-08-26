@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, BarChart3, TrendingUp, Calendar, ShoppingBag, PieChart } from 'lucide-react';
+import { RefreshCw, BarChart3, TrendingUp, Calendar, ShoppingBag, PieChart, FileDown, FileSpreadsheet } from 'lucide-react';
 import { db } from '../../utils/db';
 import GlassCard from '../../components/GlassCard';
 import { getTodayLocalStr, shiftDateStr, calculateDurationHours } from '../../utils/dateHelper';
+import { saveFinancialToPdf, exportFinancialToExcel } from '../../utils/reportExportHelper';
 
 export default function LaporanKeuangan() {
   const [startDate, setStartDate] = useState(() => {
@@ -24,6 +25,9 @@ export default function LaporanKeuangan() {
 
   const [courtPerformance, setCourtPerformance] = useState([]);
   const [posPerformance, setPosPerformance] = useState([]);
+  const [rawBookings, setRawBookings] = useState([]);
+  const [rawTransactions, setRawTransactions] = useState([]);
+  const [settings, setSettings] = useState({});
 
   // Paginasi
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,6 +55,8 @@ export default function LaporanKeuangan() {
       const bookings = await db.getBookings();
       const transactions = await db.getTransactions();
       const products = await db.getProducts();
+      const currentSettings = await db.getSettings();
+      if (currentSettings) setSettings(currentSettings);
 
       // Hitung selisih hari
       const [sy, sm, sd] = startDate.split('-').map(Number);
@@ -150,6 +156,9 @@ export default function LaporanKeuangan() {
       const totalMaxCapacityHours = activeCourtsCount * maxHoursPerCourt;
       const overallOccupancy = totalMaxCapacityHours > 0 ? (totalBookedHours / totalMaxCapacityHours) * 100 : 0;
 
+      setRawBookings(filteredBookings);
+      setRawTransactions(filteredTransactions);
+
       setSummary({
         bookingRevenue,
         posRevenue,
@@ -166,22 +175,84 @@ export default function LaporanKeuangan() {
     }
   };
 
+  // Handler Unduh / Simpan Laporan PDF (.pdf)
+  const [savingPdf, setSavingPdf] = useState(false);
+  const handleSavePdf = async () => {
+    setSavingPdf(true);
+    try {
+      await saveFinancialToPdf({
+        summary,
+        courtPerformance,
+        posPerformance,
+        filteredBookings: rawBookings,
+        filteredTransactions: rawTransactions,
+        startDate,
+        endDate,
+        settings
+      });
+    } catch (err) {
+      console.error("Gagal menyimpan PDF:", err);
+    } finally {
+      setSavingPdf(false);
+    }
+  };
+
+  // Handler Export Laporan Excel
+  const handleExportExcel = () => {
+    exportFinancialToExcel({
+      summary,
+      courtPerformance,
+      posPerformance,
+      filteredBookings: rawBookings,
+      filteredTransactions: rawTransactions,
+      startDate,
+      endDate,
+      settings
+    });
+  };
+
   return (
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="font-fraunces font-bold text-2xl sm:text-3xl text-net-charcoal">Laporan Keuangan & Okupansi</h2>
           <p className="text-xs font-sans text-net-charcoal/60 uppercase tracking-wider mt-0.5">Analisis Kinerja Bisnis Bulutangkis & POS</p>
         </div>
-        <button 
-          onClick={loadReportData}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 bg-court-green/10 text-court-green hover:bg-court-green/20 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-court-green/15"
-        >
-          <RefreshCw size={14} />
-          Segarkan Laporan
-        </button>
+        
+        {/* Action Buttons: Export Excel, Save PDF, Segarkan */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleExportExcel}
+            disabled={loading || savingPdf}
+            className="flex items-center justify-center gap-1.5 py-2 px-3.5 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 border border-emerald-600/20 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+            title="Download Spreadsheet Excel (.csv)"
+          >
+            <FileSpreadsheet size={15} />
+            <span>Export Excel</span>
+          </button>
+
+          <button
+            onClick={handleSavePdf}
+            disabled={loading || savingPdf}
+            className="flex items-center justify-center gap-1.5 py-2 px-3.5 bg-net-charcoal text-shuttle-cream hover:bg-net-charcoal/90 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            title="Simpan & Download Dokumen Laporan Resmi (.pdf)"
+          >
+            <FileDown size={15} className={savingPdf ? 'animate-bounce' : ''} />
+            <span>{savingPdf ? 'Menyimpan...' : 'Save PDF'}</span>
+          </button>
+
+          <button 
+            onClick={loadReportData}
+            disabled={loading}
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-court-green/10 text-court-green hover:bg-court-green/20 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-court-green/15 disabled:opacity-50"
+            title="Segarkan Data"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span>Segarkan</span>
+          </button>
+        </div>
       </div>
 
       {/* Date Filters Widget */}

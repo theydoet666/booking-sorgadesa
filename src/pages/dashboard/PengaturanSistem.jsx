@@ -26,6 +26,7 @@ export default function PengaturanSistem() {
     hero_sub_badge: '',
     hero_sub_title: '',
     hero_desc: '',
+    hero_bg_image: '',
     court_badge: '',
     court_title: '',
     schedule_badge: '',
@@ -216,6 +217,27 @@ export default function PengaturanSistem() {
       db.addActivityLog(adminName, 'Unggah Logo Baru', 'Memperbarui logo branding dan favicon sistem');
     } else {
       showAlert.error("Gagal", res.message || "Gagal mengunggah logo.");
+    }
+    setLoading(false);
+  };
+
+  // Upload Hero Background Baru
+  const handleHeroBgUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert.warning("Foto Terlalu Besar", "Ukuran gambar background hero tidak boleh melebihi 5MB!");
+      return;
+    }
+
+    setLoading(true);
+    const res = await db.uploadHeroImage(file);
+    if (res.success) {
+      setSettingsForm(prev => ({ ...prev, hero_bg_image: res.url }));
+      showAlert.success("Foto Berhasil Diunggah", "Foto background hero berhasil diunggah! Klik tombol 'Simpan Pengaturan' untuk menyimpan perubahan.");
+    } else {
+      showAlert.error("Gagal Mengunggah", res.message || "Gagal mengunggah foto background hero.");
     }
     setLoading(false);
   };
@@ -1411,6 +1433,63 @@ export default function PengaturanSistem() {
                   onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_desc: e.target.value }))}
                   className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40"
                 />
+              </div>
+
+              {/* Hero Background Image Setting */}
+              <div className="pt-2">
+                <label className="block font-bold text-net-charcoal/70 uppercase mb-1">Foto Background Hero</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[11px] text-net-charcoal/60 block mb-1">URL Gambar (atau Unggah Berkas):</span>
+                      <input
+                        type="text"
+                        placeholder="https://images.unsplash.com/..."
+                        value={settingsForm.hero_bg_image || ''}
+                        onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_bg_image: e.target.value }))}
+                        className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 text-xs font-mono"
+                      />
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-court-green text-shuttle-cream rounded-lg text-xs font-bold hover:bg-court-green/90 cursor-pointer shadow-sm">
+                        <Upload size={14} />
+                        Unggah Foto Background
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleHeroBgUpload}
+                          className="hidden"
+                          disabled={loading}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm(prev => ({ ...prev, hero_bg_image: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=2070&auto=format&fit=crop' }))}
+                        className="px-3 py-2 bg-shuttle-cream border border-net-charcoal/20 text-net-charcoal rounded-lg text-xs font-medium hover:bg-shuttle-cream/80 cursor-pointer"
+                      >
+                        Reset Default
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-net-charcoal/50 block">Maksimal 5MB (JPG, PNG, WebP). Direkomendasikan gambar berorientasi landscape resolusi tinggi.</span>
+                  </div>
+
+                  {/* Preview Box */}
+                  <div className="relative rounded-xl overflow-hidden border border-net-charcoal/20 h-36 bg-slate-900 flex items-center justify-center group shadow-inner">
+                    <img
+                      src={settingsForm.hero_bg_image || 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=2070&auto=format&fit=crop'}
+                      alt="Hero Background Preview"
+                      className="w-full h-full object-cover opacity-80"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=2070&auto=format&fit=crop';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-900/60 to-transparent p-3 flex flex-col justify-end">
+                      <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Live Preview Background</span>
+                      <span className="text-xs text-white font-bold truncate">{settingsForm.hero_title || 'Siap Untuk Smash Keras?'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
