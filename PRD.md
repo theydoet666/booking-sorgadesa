@@ -5,11 +5,12 @@
 |---|---|
 | **Nama Produk** | App Booking Sorga Desa Belega |
 | **Jenis Sistem** | Sistem Booking Lapangan Badminton & Point of Sale (POS) |
-| **Versi Dokumen** | 2.1 (Selesai Dibangun, Hardened & Production Ready) |
-| **Tanggal** | 26 Agustus 2026 |
-| **Status** | 🟢 Selesai, Hardened, SEO Ready & Siap Deploy ke Shared Hosting |
+| **Versi Dokumen** | 2.2 (Selesai Dibangun, Hardened, Password Management, Audit Log & Production Ready) |
+| **Tanggal** | 27 Agustus 2026 |
+| **Status** | 🟢 Selesai, Hardened, SEO Ready, Audit Log Ready & Siap Deploy ke Shared Hosting |
 | **Tech Stack** | React JS (Vite) + Tailwind CSS (Frontend) + Supabase (Backend, DB, Auth, Storage) |
 | **Target Deployment**| Shared Hosting cPanel (Frontend) + Supabase Cloud (Backend & Database) |
+| **Domain Resmi** | `https://sorgadesa.belega.id/` (Email Staf: `@sorgadesa.belega.id`) |
 
 ---
 
@@ -19,12 +20,15 @@
 Sorga Desa Belega (terletak di Gianyar, Bali) telah berhasil menyelesaikan migrasi sistem dari platform Google Apps Script (GAS) dan Google Sheets ke arsitektur modern berbasis **React JS + Tailwind CSS** di sisi frontend dan **Supabase** di sisi backend. Migrasi ini telah mengatasi limitasi Apps Script (kuota eksekusi harian, pembacaan sel lembar kerja yang lambat, dan masalah skalabilitas), sekaligus menghadirkan antarmuka pengguna yang sangat responsif, andal, dan terasa seperti aplikasi *mobile native* di HP pelanggan.
 
 ### 1.2 Tujuan Migrasi & Pencapaian
-1. **Performa Tinggi:** Mengganti Google Sheets yang lambat dengan PostgreSQL di Supabase untuk pencarian jadwal instan (<100ms).
-2. **Keamanan Handal:** Menerapkan Row Level Security (RLS) multi-role di Supabase, Security Definer Helper functions (`is_staff()`, `is_admin()`), View publik tanpa PII (`public_jadwal_lapangan`), dan Trigger anti-privilege escalation guna memproteksi data pemesanan internal, data staf, dan data keuangan dari akses luar yang tidak sah.
-3. **Pengalaman Pengguna (UX) Premium:** Membangun antarmuka landing page dengan gaya *glassmorphism* di React yang terasa halus, menggunakan interaksi mikro (*micro-animations*), carousel testimoni multi-platform responsif, dan dioptimalkan agar terasa seperti aplikasi *mobile native* di layar HP.
-4. **Kasir POS & Stok Terintegrasi:** Menyediakan fitur POS (Point of Sale) kasir dengan validasi stok *real-time* yang aman (*race-condition safe*) menggunakan trigger relasional PostgreSQL (`SELECT FOR UPDATE`).
-5. **Kemudahan Pengelolaan & Otomatisasi:** Menggunakan database relasional murni di Supabase untuk laporan penjualan dan okupansi lapangan, menjadwalkan pembukaan slot member menggunakan cron job database (`pg_cron`), serta pembatalan otomatis untuk booking pending yang kadaluarsa (>2 jam).
-6. **Optimasi SEO Google Lengkap:** Dilengkapi dengan struktur On-Page & Technical SEO (Schema.org JSON-LD `SportsActivityLocation` & `LocalBusiness`, Open Graph, `sitemap.xml`, `robots.txt`, dan `.htaccess` SPA routing) agar siap diindeks di Google Search Console.
+1. **Performa Tinggi:** Mengganti Google Sheets yang lambat dengan PostgreSQL di Supabase untuk pencarian jadwal instan (<100ms) dan pengambilan data paralel (`Promise.all`).
+2. **Keamanan Handal & Anti-Privilege Escalation:** Menerapkan Row Level Security (RLS) multi-role di Supabase, Security Definer Helper functions (`is_staff()`, `is_admin()`), View publik tanpa PII (`public_jadwal_lapangan`), penguncian RPC `create_staff_user` tanpa bypass anonim, proteksi RLS `profiles` & `log_aktivitas`, serta eliminasi kredensial dev sandbox dari bundle production (*tree-shaking*).
+3. **Manajemen Kata Sandi Mandiri & Banner Notifikasi:** Fitur ganti kata sandi mandiri untuk seluruh staf, toggle show/hide password, dan banner peringatan dinamis (*amber*) bagi akun yang masih menggunakan kata sandi sementara (`must_change_password`).
+4. **Log Audit & Rekam Aktivitas Staf (Khusus Super Admin):** Antarmuka audit trail terintegrasi untuk Super Admin guna memantau riwayat login staf, transaksi POS, pengelolaan booking, dan perubahan konfigurasi sistem dengan filter real-time.
+5. **Pendaftaran Staf Instan & Bebas Rate-Limit:** Pendaftaran akun staf via Database Function PostgreSQL (`create_staff_user`) dengan email terkonfirmasi instan `@sorgadesa.belega.id` dan auto-generate `id_user` (`USR-01`, `USR-02`, dst.).
+6. **Pengalaman Pengguna (UX) Premium & Favicon Resmi:** Antarmuka landing page dengan gaya *glassmorphism* bernuansa bulu tangkis Bali, logo resmi multi-format (*favicon.ico, svg, png*), carousel testimoni multi-platform, dan Bottom Sheet modal mobile.
+7. **Kasir POS & Stok Terintegrasi:** Fitur POS (Point of Sale) kasir dengan validasi stok *real-time* yang aman (*race-condition safe*) menggunakan trigger relasional PostgreSQL (`SELECT FOR UPDATE`).
+8. **Kemudahan Pengelolaan & Otomatisasi:** Ekstensi Postgres untuk mengotomatiskan pembukaan jadwal berkala (`pg_cron`) dan pembatalan otomatis booking pending kadaluarsa (>2 jam).
+9. **Optimasi SEO Google Lengkap:** Struktur On-Page & Technical SEO lengkap (Schema.org JSON-LD `SportsActivityLocation` & `LocalBusiness`, Open Graph, `sitemap.xml`, `robots.txt`, dan `.htaccess` SPA routing).
 
 ### 1.3 Asumsi & Batasan Desain (Terimplementasi)
 - **Konfirmasi Pembayaran:** Menggunakan **metode manual** (Transfer Bank / Bayar di Tempat). Detail bank (Nama Bank, Nomor Rekening, Atas Nama) dapat dikonfigurasi secara dinamis dari Dashboard Admin dan disinkronkan ke Bottom Sheet Modal landing page lengkap dengan fitur 1-click *Copy Rekening*. Status awal pemesanan dari landing page adalah `Pending` dan `Belum Bayar`.
@@ -208,17 +212,19 @@ CREATE TABLE IF NOT EXISTS transaksi_pos_item (
 -- 8. Tabel Profil Staf Pengguna (Menghubungkan Auth Supabase)
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id_user VARCHAR(50),
     nama VARCHAR(150) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('Super Admin', 'Admin', 'Kasir')),
     status VARCHAR(20) DEFAULT 'Aktif' CHECK (status IN ('Aktif', 'Nonaktif')),
+    must_change_password BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 9. Tabel Log Aktivitas
+-- 9. Tabel Log Aktivitas (Audit Trail)
 CREATE TABLE IF NOT EXISTS log_aktivitas (
     id_log UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     user_nama VARCHAR(100) NOT NULL,
     aksi VARCHAR(150) NOT NULL,
     detail TEXT
@@ -492,12 +498,16 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
 
 ```
 /Sorga-Desa-Supabase
-├── index.html                    # SEO Metadata, Schema.org JSON-LD
+├── index.html                    # SEO Metadata, Schema.org JSON-LD, Early Favicon Sync
 ├── package.json
-├── vite.config.js                # Watcher ignore config untuk Windows
+├── vite.config.js                # Vite build config & security headers
+├── CATATAN_PROGRES.md            # Rangkuman progres pengerjaan harian
+├── PRD.md                        # Product Requirements Document & System Specs
 ├── public/
-│   ├── favicon.ico
-│   ├── robots.txt                # Technical SEO
+│   ├── favicon.ico               # Multi-size icon (16x16 - 256x256)
+│   ├── favicon.svg               # Modern vector favicon
+│   ├── favicon.png / logo.png    # High-res app icons (512x512)
+│   ├── robots.txt                # Technical SEO rules
 │   └── sitemap.xml               # Sitemap Google Search Console
 ├── src/
 │   ├── main.jsx
@@ -509,14 +519,15 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
 │   │   ├── GlassCard.jsx         # Card pembungkus glassmorphism
 │   │   ├── ScoreboardGrid.jsx    # Grid jadwal interaktif
 │   │   ├── BottomSheetModal.jsx  # Popup sheet & copy rekening
-│   │   └── ModernHero.jsx        # Intro Hero dynamic background & badges
+│   │   ├── ModernHero.jsx        # Intro Hero dynamic background & badges
+│   │   └── ChangePasswordModal.jsx # Dialog ganti kata sandi mandiri
 │   │
 │   ├── layouts/
-│   │   └── DashboardLayout.jsx   # Layout admin & sidebar
+│   │   └── DashboardLayout.jsx   # Layout admin, sidebar, banner kata sandi sementara
 │   │
 │   ├── pages/
-│   │   ├── LandingPage.jsx       # Public landing page utama
-│   │   ├── LoginAdmin.jsx        # Halaman login staf
+│   │   ├── LandingPage.jsx       # Public landing page utama (Parallel fetching)
+│   │   ├── LoginAdmin.jsx        # Halaman login staf (Dual-domain fallback & eye toggle)
 │   │   │
 │   │   └── dashboard/            # Panel Admin internal
 │   │       ├── DashboardOverview.jsx
@@ -524,12 +535,13 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
 │   │       ├── KelolaSchedules.jsx
 │   │       ├── PointOfSale.jsx
 │   │       ├── LaporanKeuangan.jsx
-│   │       └── PengaturanSistem.jsx
+│   │       └── PengaturanSistem.jsx # Tab Info, Lapangan, Staf, Galeri, Testimoni, Log Audit
 │   │
 │   └── utils/
-│       ├── alertHelper.js        # Utilitas notifikasi UI
-│       ├── dateHelper.js         # Format tanggal & jam
+│       ├── alertHelper.js        # Utilitas notifikasi UI (SweetAlert2)
+│       ├── dateHelper.js         # Format tanggal & jam lokal Indonesia
 │       ├── db.js                 # Handler Supabase & LocalStorage Fallback
+│       ├── devMockAuth.js        # Modul sandbox dev-only (Tree-shaken in production)
 │       ├── logoHelper.js         # Logo default & favicon handler
 │       ├── mockData.js           # Sandbox mock dataset
 │       ├── reportExportHelper.js # Handler ekspor laporan PDF/Excel
@@ -539,7 +551,9 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
         ├── 01_phase1_security_hardening.sql
         ├── 02_phase2_rls_and_privacy.sql
         ├── 03_phase3_storage_and_automation.sql
-        └── 04_phase4_final_hardening.sql
+        ├── 04_phase4_final_hardening.sql
+        ├── 05_add_must_change_password.sql
+        └── 06_fix_privilege_escalation.sql
 ```
 
 ---
