@@ -501,9 +501,75 @@ export const db = {
     return JSON.parse(localStorage.getItem('sorga_staff')) || [];
   },
 
+  // Mendaftarkan staf baru (Buat auth user + profile record)
+  async registerStaff({ nama, username, password, role, status }) {
+    const tempPassword = password || (role === 'Admin' ? 'admin123' : 'kasir123');
+
+    if (isSupabaseConfigured()) {
+      const email = username.includes('@') ? username : `${username}@sorgadesa.com`;
+
+      // 1. Buat akun Auth di Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: tempPassword,
+        options: {
+          data: {
+            nama,
+            username,
+            role
+          }
+        }
+      });
+
+      if (authError) {
+        // Jika user auth sudah terdaftar, beri pesan informatif
+        if (authError.message && authError.message.includes('User already registered')) {
+          return { success: false, message: `Username/Email "${username}" sudah terdaftar di Supabase Auth!` };
+        }
+        return { success: false, message: authError.message };
+      }
+
+      const userId = authData?.user?.id;
+      if (userId) {
+        // 2. Simpan profil ke tabel profiles
+        const profilePayload = {
+          id: userId,
+          nama,
+          username,
+          role,
+          status: status || 'Aktif',
+          must_change_password: true
+        };
+
+        const { error: profileError } = await supabase.from('profiles').upsert([profilePayload], { onConflict: 'id' });
+        if (profileError) {
+          if (profileError.message && profileError.message.includes('must_change_password')) {
+            delete profilePayload.must_change_password;
+            await supabase.from('profiles').upsert([profilePayload], { onConflict: 'id' });
+          }
+        }
+      }
+    }
+
+    // Simpan ke storage lokal
+    const all = JSON.parse(localStorage.getItem('sorga_staff')) || [];
+    const staffId = `USR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const newRecord = {
+      id_user: staffId,
+      nama,
+      username,
+      role,
+      status: status || 'Aktif',
+      must_change_password: true
+    };
+    all.push(newRecord);
+    localStorage.setItem('sorga_staff', JSON.stringify(all));
+    return { success: true };
+  },
+
+  // Mengubah data staf yang sudah ada (misal: toggle status, must_change_password)
   async saveStaff(staff) {
     if (isSupabaseConfigured()) {
-      // Format payload yang valid untuk tabel profiles Supabase (hanya kolom yang ada di database)
       const profileData = {
         nama: staff.nama,
         username: staff.username,
@@ -511,27 +577,35 @@ export const db = {
         status: staff.status || 'Aktif'
       };
 
-      if (staff.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staff.id)) {
-        profileData.id = staff.id;
-      }
-
       if (staff.must_change_password !== undefined) {
         profileData.must_change_password = Boolean(staff.must_change_password);
       }
 
-      // Upsert ke tabel profiles
-      const { error } = await supabase.from('profiles').upsert([profileData], { onConflict: 'username' });
+      // Update profil berdasarkan id UUID atau username
+      let updateQuery;
+      if (staff.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staff.id)) {
+        updateQuery = supabase.from('profiles').update(profileData).eq('id', staff.id);
+      } else {
+        updateQuery = supabase.from('profiles').update(profileData).eq('username', staff.username);
+      }
+
+      const { error } = await updateQuery;
       if (error) {
-        // Jika kolom must_change_password belum dieksekusi di SQL editor Supabase
         if (error.message && (error.message.includes('must_change_password') || error.message.includes('column'))) {
           delete profileData.must_change_password;
-          const { error: retryError } = await supabase.from('profiles').upsert([profileData], { onConflict: 'username' });
-          if (retryError) {
-            console.error("Gagal menyimpan profil staf di Supabase:", retryError);
-            return { success: false, message: retryError.message };
+          let retryQuery;
+          if (staff.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staff.id)) {
+            retryQuery = supabase.from('profiles').update(profileData).eq('id', staff.id);
+          } else {
+            retryQuery = supabase.from('profiles').update(profileData).eq('username', staff.username);
+          }
+          const { error: retryErr } = await retryQuery;
+          if (retryErr) {
+            console.error("Gagal update profil staf di Supabase:", retryErr);
+            return { success: false, message: retryErr.message };
           }
         } else {
-          console.error("Gagal menyimpan profil staf di Supabase:", error);
+          console.error("Gagal update profil staf di Supabase:", error);
           return { success: false, message: error.message };
         }
       }

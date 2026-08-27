@@ -71,9 +71,11 @@ export default function PengaturanSistem() {
   // 3. State Staff Users
   const [staffList, setStaffList] = useState([]);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [newStaff, setNewStaff] = useState({
     nama: '',
     username: '',
+    password: '',
     role: 'Kasir',
     status: 'Aktif'
   });
@@ -618,23 +620,31 @@ export default function PengaturanSistem() {
       return;
     }
 
+    if (newStaff.password && newStaff.password.length < 6) {
+      showAlert.warning("Kata Sandi Terlalu Pendek", "Kata sandi sementara minimal 6 karakter!");
+      return;
+    }
+
     const sessionStr = sessionStorage.getItem('sorga_session');
     const adminName = sessionStr ? JSON.parse(sessionStr).user.nama : 'Admin';
     
     const staffData = {
       nama: newStaff.nama.trim(),
       username: newStaff.username.trim().toLowerCase(),
+      password: newStaff.password.trim() || (newStaff.role === 'Admin' ? 'admin123' : 'kasir123'),
       role: newStaff.role,
-      status: newStaff.status || 'Aktif',
-      must_change_password: true
+      status: newStaff.status || 'Aktif'
     };
 
-    const res = await db.saveStaff(staffData);
+    setLoading(true);
+    const res = await db.registerStaff(staffData);
+    setLoading(false);
+
     if (res.success) {
       db.addActivityLog(adminName, 'Tambah Staf Baru', `Mendaftarkan staf baru: ${newStaff.nama} (${newStaff.role})`);
       setIsStaffModalOpen(false);
       showAlert.success("Staf Baru Terdaftar", `Akun staf ${newStaff.nama} berhasil didaftarkan ke sistem.`);
-      setNewStaff({ nama: '', username: '', role: 'Kasir', status: 'Aktif' });
+      setNewStaff({ nama: '', username: '', password: '', role: 'Kasir', status: 'Aktif' });
       loadSettingsData();
     } else {
       showAlert.error("Gagal Mendaftar", res.message || "Gagal menyimpan akun staf.");
@@ -1791,6 +1801,30 @@ export default function PengaturanSistem() {
                 </div>
 
                 <div>
+                  <label className="block font-bold text-net-charcoal/70 uppercase mb-1">Kata Sandi Sementara</label>
+                  <div className="relative">
+                    <input
+                      type={showStaffPassword ? "text" : "password"}
+                      placeholder="Default: kasir123 (minimal 6 karakter)"
+                      value={newStaff.password}
+                      onChange={(e) => setNewStaff(prev => ({ ...prev, password: e.target.value }))}
+                      className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 pr-9 font-sans"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowStaffPassword(!showStaffPassword)}
+                      className="absolute right-2.5 top-2.5 text-net-charcoal/40 hover:text-court-green cursor-pointer p-0.5"
+                      title={showStaffPassword ? "Sembunyikan" : "Tampilkan"}
+                    >
+                      <KeyRound size={14} />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-net-charcoal/50 mt-1 block">
+                    Staf akan diwajibkan mengubah kata sandi ini saat pertama kali masuk ke dashboard.
+                  </span>
+                </div>
+
+                <div>
                   <label className="block font-bold text-net-charcoal/70 uppercase mb-1">Hak Akses Role</label>
                   <select
                     value={newStaff.role}
@@ -1804,9 +1838,10 @@ export default function PengaturanSistem() {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-court-green text-shuttle-cream font-sans font-bold uppercase rounded-lg hover:bg-court-green/95 transition-all text-xs pt-4 cursor-pointer shadow-md"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-court-green text-shuttle-cream font-sans font-bold uppercase rounded-lg hover:bg-court-green/95 transition-all text-xs pt-4 cursor-pointer shadow-md disabled:opacity-50"
                 >
-                  Simpan Akun Staf
+                  {loading ? 'Mendaftarkan Akun...' : 'Simpan Akun Staf'}
                 </button>
               </form>
             </GlassCard>
