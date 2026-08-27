@@ -656,8 +656,8 @@ export default function LandingPage() {
               Hubungi Admin via WA
             </a>
 
-            {/* Google Map Embed (Safe Embed with Sandbox) */}
-            <div className="rounded-xl overflow-hidden h-40 border border-chalk-line/10 relative shadow">
+            {/* Google Map Embed */}
+            <div className="rounded-xl overflow-hidden h-44 border border-chalk-line/10 relative shadow">
               <iframe 
                 title="Sorga Desa Belega Map"
                 src={
@@ -671,8 +671,7 @@ export default function LandingPage() {
                 allowFullScreen="" 
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                sandbox="allow-scripts allow-same-origin allow-popups"
-                className="grayscale opacity-80 contrast-125"
+                className="w-full h-full"
               ></iframe>
             </div>
           </div>
