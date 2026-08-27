@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import GlassCard from '../components/GlassCard';
@@ -9,6 +9,7 @@ import { DEFAULT_LOGO, updateFavicon } from '../utils/logoHelper';
 export default function LoginAdmin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
@@ -169,14 +170,23 @@ export default function LoginAdmin() {
               <label className="block text-xs font-sans font-bold text-net-charcoal/70 uppercase tracking-wider mb-1">Kata Sandi</label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-net-charcoal/20 bg-shuttle-cream/40 focus:outline-none focus:border-rattan-gold text-sm font-sans pl-10"
+                  className="w-full p-3 rounded-xl border border-net-charcoal/20 bg-shuttle-cream/40 focus:outline-none focus:border-rattan-gold text-sm font-sans pl-10 pr-10"
                 />
                 <Lock size={16} className="absolute left-3.5 top-4 text-net-charcoal/40" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3.5 text-net-charcoal/40 hover:text-court-green transition-colors p-0.5 rounded cursor-pointer focus:outline-none"
+                  title={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
