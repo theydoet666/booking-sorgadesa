@@ -64,15 +64,29 @@ export default function LoginAdmin() {
     }
 
     try {
-      // Supabase Auth Integration
-      // Username diubah ke format email @sorgadesa.belega.id untuk login auth.users
-      const email = username.includes('@') ? username : `${username}@sorgadesa.belega.id`;
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Supabase Auth Integration: Coba domain utama (@sorgadesa.belega.id) lalu fallback ke (@sorgadesa.com)
+      const cleanUsername = username.trim().toLowerCase();
+      let email = cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@sorgadesa.belega.id`;
+      
+      let authRes = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
 
-      if (error) throw error;
+      // Jika gagal dan login tanpa tanda '@', otomatis coba fallback ke domain lama (@sorgadesa.com)
+      if (authRes.error && !cleanUsername.includes('@')) {
+        const fallbackEmail = `${cleanUsername}@sorgadesa.com`;
+        const retryRes = await supabase.auth.signInWithPassword({
+          email: fallbackEmail,
+          password: password,
+        });
+        if (!retryRes.error) {
+          authRes = retryRes;
+        }
+      }
+
+      if (authRes.error) throw authRes.error;
+      const data = authRes.data;
 
       // Ambil profile role dari tabel profiles
       const { data: profile, error: errProfile } = await supabase
