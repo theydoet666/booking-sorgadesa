@@ -43,49 +43,22 @@ export default function LoginAdmin() {
     const dbConfigured = isSupabaseConfigured();
 
     if (!dbConfigured) {
-      if (import.meta.env.PROD) {
-        setErrorMsg('Server database Supabase belum terkonfigurasi. Harap periksa environment variables.');
+      // Jika di production dan Supabase belum terkonfigurasi, tolak login secara absolut tanpa fallback
+      if (!import.meta.env.DEV) {
+        setErrorMsg('Sistem otentikasi belum siap. Server database Supabase belum terkonfigurasi pada environment production.');
         setLoading(false);
         return;
       }
 
-      // Sandbox Mock Login Simulation (Khusus Development Mode)
-      const staffList = JSON.parse(localStorage.getItem('sorga_staff')) || [];
-      const user = staffList.find(s => s.username === username);
-
-      if (!user) {
-        setErrorMsg('Username tidak terdaftar di database sandbox.');
+      // Khusus Development Mode (Sandbox): Dynamic import devMockAuth agar ter-strip saat build production
+      try {
+        const { handleDevMockLogin } = await import('../utils/devMockAuth');
+        await handleDevMockLogin({ username, password, db, navigate, setErrorMsg, setLoading });
+      } catch (err) {
+        console.error('Gagal memuat modul dev mock auth:', err);
+        setErrorMsg('Gagal memuat modul otentikasi mode pengembangan.');
         setLoading(false);
-        return;
       }
-
-      // Check simple password hash logic fallback (admin123 / kasir123)
-      const expectedPassword = username === 'admin' ? 'admin123' : 'kasir123';
-      if (password !== expectedPassword) {
-        setErrorMsg('Password salah! Coba admin123 atau kasir123.');
-        setLoading(false);
-        return;
-      }
-
-      if (user.status !== 'Aktif') {
-        setErrorMsg('Akun Anda dinonaktifkan. Silakan hubungi Super Admin.');
-        setLoading(false);
-        return;
-      }
-
-      // Success sandbox login
-      sessionStorage.setItem('sorga_session', JSON.stringify({
-        token: `mock-token-${Date.now()}`,
-        user: {
-          nama: user.nama,
-          username: user.username,
-          role: user.role
-        }
-      }));
-
-      db.addActivityLog(user.nama, 'Login Admin', 'Berhasil masuk ke dashboard sandbox');
-      setLoading(false);
-      navigate('/admin');
       return;
     }
 
@@ -183,7 +156,7 @@ export default function LoginAdmin() {
                 <input
                   type="text"
                   required
-                  placeholder="admin atau kasir"
+                  placeholder="Masukkan username atau email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full p-3 rounded-xl border border-net-charcoal/20 bg-shuttle-cream/40 focus:outline-none focus:border-rattan-gold text-sm font-sans pl-10"
