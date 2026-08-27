@@ -72,6 +72,42 @@
 
 ---
 
+### G. Migrasi Domain Email Akun Staf ke `@sorgadesa.belega.id`
+1. **Penyelarasan Domain Resmi:**
+   - Mengubah pemetaan username login internal menjadi `${username}@sorgadesa.belega.id` (selaras dengan domain web `https://sorgadesa.belega.id/`).
+2. **Mekanisme Dual-Domain Auto-Fallback (`LoginAdmin.jsx`):**
+   - Sistem login secara otomatis mencoba `@sorgadesa.belega.id` lalu fallback ke `@sorgadesa.com` untuk menjamin akun lama dan baru dapat login 100% lancar.
+3. **SQL Migration Email Update:**
+   - Query SQL migrasi instan untuk memperbarui seluruh email akun lama di `auth.users`.
+
+---
+
+### H. Fitur Log Audit & Rekam Aktivitas Staf (Khusus Super Admin)
+1. **Sub-Tab Eksklusif Super Admin (`PengaturanSistem.jsx`):**
+   - Tab baru **"Log Audit Sistem"** dengan ikon `History` yang hanya muncul dan dapat diakses jika pengguna memiliki role `Super Admin`.
+2. **Rekam Aktivitas Lengkap:**
+   - Menampilkan kronologi seluruh aksi login, transaksi kasir POS, booking lapangan, jadwal member, pendaftaran staf, dan pengaturan sistem.
+3. **Alat Filter & Navigasi Cerdas:**
+   - Filter per staf tertentu, filter kategori aksi (Autentikasi, Booking, Kasir POS, Sistem), kotak pencarian real-time, dan paginasi 12 baris per halaman.
+4. **Optimasi Database Handler (`db.js`):**
+   - Penanganan query `log_aktivitas` yang resilient terhadap kolom `created_at` dan `timestamp` dengan auto-sorting `DESC`.
+
+---
+
+### I. Hardening Keamanan Kritis & Anti-Privilege Escalation (Migration 06)
+1. **Penguncian RPC `create_staff_user` (`06_fix_privilege_escalation.sql`):**
+   - Mencabut total izin eksekusi dari role `anon` dan `public`.
+   - Menolak eksekusi jika `auth.uid() IS NULL` atau role bukan `Super Admin`/`Admin`.
+   - Mencegah Admin biasa membuat sesama/atasan `Super Admin`.
+2. **Perbaikan RLS Policy `profiles`:**
+   - Menghapus celah `OR auth.uid() IS NOT NULL` dan mencabut hak `INSERT` bagi pengguna anonymous.
+3. **Perbaikan RLS Policy `log_aktivitas`:**
+   - Memperketat `SELECT` agar hanya dapat dibaca oleh `Admin` atau `Super Admin` (bukan lagi `USING (true)`).
+4. **Verifikasi Database:**
+   - Telah diverifikasi 100% sukses via query sistem `information_schema.routine_privileges` dan `pg_policies`.
+
+---
+
 ## 2. Rangkuman Pekerjaan Sebelumnya (24 - 26 Agustus 2026)
 
 ### A. Desain Ulang & Penyempurnaan Section Testimoni (Landing Page)
