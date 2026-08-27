@@ -661,9 +661,9 @@ export default function LandingPage() {
               <iframe 
                 title="Sorga Desa Belega Map"
                 src={
-                  (settings.google_maps_iframe && settings.google_maps_iframe.startsWith('https://www.google.com/maps/embed'))
-                    ? settings.google_maps_iframe
-                    : "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15783.565860717208!2d115.30900085!3d-8.50974445!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd21644146059d3%3A0xc3f6735e5d321528!2sBelega%2C%20Blahbatuh%2C%20Gianyar%20Regency%2C%20Bali!5e0!3m2!1sen!2sid!4v1700000000000!5m2!1sen!2sid"
+                  (settings.google_maps_iframe && settings.google_maps_iframe.includes('google.com/maps/embed'))
+                    ? (settings.google_maps_iframe.match(/src=["']([^"']+)["']/) ? settings.google_maps_iframe.match(/src=["']([^"']+)["']/)[1] : settings.google_maps_iframe)
+                    : "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d1170.0072306116913!2d115.3106892!3d-8.5571817!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd2172940bd7bcf%3A0xd1d39209ea6f06c8!2sSorga%20Belega!5e1!3m2!1sen!2sid!4v1787796501037!5m2!1sen!2sid"
                 } 
                 width="100%" 
                 height="100%" 

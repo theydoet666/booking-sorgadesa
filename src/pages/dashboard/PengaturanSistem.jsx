@@ -1669,10 +1669,19 @@ export default function PengaturanSistem() {
                   required
                   rows={2}
                   value={settingsForm.google_maps_iframe || ''}
-                  onChange={(e) => setSettingsForm(prev => ({ ...prev, google_maps_iframe: e.target.value }))}
+                  onChange={(e) => {
+                    let val = e.target.value.trim();
+                    // Jika user paste seluruh tag <iframe src="...">, otomatis ekstrak URL-nya saja
+                    const match = val.match(/src=["']([^"']+)["']/);
+                    if (match && match[1]) {
+                      val = match[1];
+                    }
+                    setSettingsForm(prev => ({ ...prev, google_maps_iframe: val }));
+                  }}
                   placeholder="Masukkan link src iframe Google Maps (contoh: https://www.google.com/maps/embed?...)"
-                  className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 font-sans"
+                  className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 font-sans text-xs"
                 />
+                <span className="text-[10px] text-net-charcoal/50">Bisa paste link <code>https://www.google.com/maps/embed?...</code> atau langsung paste seluruh tag <code>&lt;iframe src="..."&gt;&lt;/iframe&gt;</code>.</span>
               </div>
             </div>
 
