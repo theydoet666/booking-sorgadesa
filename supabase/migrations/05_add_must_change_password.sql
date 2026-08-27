@@ -53,6 +53,20 @@ BEGIN
         SET email = REPLACE(email, '@sorgadesa.com', '@sorgadesa.belega.id')
         WHERE email LIKE '%@sorgadesa.com';
     END IF;
+
+    -- 7. Pastikan tabel log_aktivitas memiliki kolom yang lengkap dan RLS policy aktif
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'log_aktivitas') THEN
+        ALTER TABLE log_aktivitas ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+        ALTER TABLE log_aktivitas ADD COLUMN IF NOT EXISTS user_nama VARCHAR(100);
+        ALTER TABLE log_aktivitas ADD COLUMN IF NOT EXISTS aksi VARCHAR(150);
+        ALTER TABLE log_aktivitas ADD COLUMN IF NOT EXISTS detail TEXT;
+        
+        ALTER TABLE log_aktivitas ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS "Admin Read Logs" ON log_aktivitas;
+        CREATE POLICY "Admin Read Logs" ON log_aktivitas FOR SELECT TO authenticated USING (true);
+        DROP POLICY IF EXISTS "Allow Insert Logs" ON log_aktivitas;
+        CREATE POLICY "Allow Insert Logs" ON log_aktivitas FOR INSERT TO anon, authenticated WITH CHECK (true);
+    END IF;
 END $$;
 
 -- ------------------------------------------------------------------------------

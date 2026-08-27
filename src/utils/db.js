@@ -481,14 +481,13 @@ export const db = {
 
   // === LOG AKTIVITAS (AUDIT TRAIL) ===
   async addActivityLog(user, action, detail) {
-    const timestamp = new Date().toISOString();
+    const localTimestamp = new Date().toISOString();
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('log_aktivitas').insert([{ 
           user_nama: user, 
           aksi: action, 
-          detail,
-          timestamp 
+          detail 
         }]);
       } catch (err) {
         console.warn("Gagal menyimpan log aktivitas ke Supabase:", err);
@@ -498,7 +497,8 @@ export const db = {
     const logs = JSON.parse(localStorage.getItem('sorga_activity_logs')) || [];
     logs.unshift({
       id_log: `LOG-${Date.now()}`,
-      timestamp,
+      timestamp: localTimestamp,
+      created_at: localTimestamp,
       user_nama: user,
       aksi: action,
       detail
@@ -510,13 +510,30 @@ export const db = {
 
   async getActivityLogs(limit = 100) {
     if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
+      // 1. Coba query dengan order created_at
+      let { data, error } = await supabase
         .from('log_aktivitas')
         .select('*')
-        .order('timestamp', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(limit);
+
+      // 2. Jika kolom created_at belum ada, fallback ke select biasa
+      if (error) {
+        const retry = await supabase
+          .from('log_aktivitas')
+          .select('*')
+          .limit(limit);
+        if (!retry.error && retry.data) {
+          data = retry.data;
+          error = null;
+        }
+      }
+
       if (!error && data) {
-        return data;
+        return data.map(d => ({
+          ...d,
+          timestamp: d.created_at || d.timestamp || d.id_log || new Date().toISOString()
+        })).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
       }
     }
     return JSON.parse(localStorage.getItem('sorga_activity_logs')) || [];
