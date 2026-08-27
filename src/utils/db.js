@@ -491,21 +491,64 @@ export const db = {
   async getStaff() {
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase.from('profiles').select('*');
-      if (!error) return data;
+      if (!error && data) {
+        return data.map(d => ({
+          ...d,
+          id_user: d.id || d.id_user || `USR-${d.username}`
+        }));
+      }
     }
-    return JSON.parse(localStorage.getItem('sorga_staff'));
+    return JSON.parse(localStorage.getItem('sorga_staff')) || [];
   },
 
   async saveStaff(staff) {
     if (isSupabaseConfigured()) {
-      await supabase.from('profiles').upsert([staff]);
+      // Format payload yang valid untuk tabel profiles Supabase (hanya kolom yang ada di database)
+      const profileData = {
+        nama: staff.nama,
+        username: staff.username,
+        role: staff.role,
+        status: staff.status || 'Aktif'
+      };
+
+      if (staff.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staff.id)) {
+        profileData.id = staff.id;
+      }
+
+      if (staff.must_change_password !== undefined) {
+        profileData.must_change_password = Boolean(staff.must_change_password);
+      }
+
+      // Upsert ke tabel profiles
+      const { error } = await supabase.from('profiles').upsert([profileData], { onConflict: 'username' });
+      if (error) {
+        // Jika kolom must_change_password belum dieksekusi di SQL editor Supabase
+        if (error.message && (error.message.includes('must_change_password') || error.message.includes('column'))) {
+          delete profileData.must_change_password;
+          const { error: retryError } = await supabase.from('profiles').upsert([profileData], { onConflict: 'username' });
+          if (retryError) {
+            console.error("Gagal menyimpan profil staf di Supabase:", retryError);
+            return { success: false, message: retryError.message };
+          }
+        } else {
+          console.error("Gagal menyimpan profil staf di Supabase:", error);
+          return { success: false, message: error.message };
+        }
+      }
     }
-    const all = JSON.parse(localStorage.getItem('sorga_staff'));
-    const idx = all.findIndex(s => s.id_user === staff.id_user);
+
+    const all = JSON.parse(localStorage.getItem('sorga_staff')) || [];
+    const staffId = staff.id_user || staff.id || `USR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const idx = all.findIndex(s => s.username === staff.username || (staff.id_user && s.id_user === staff.id_user));
+    const finalStaff = {
+      ...staff,
+      id_user: staffId
+    };
+
     if (idx !== -1) {
-      all[idx] = { ...all[idx], ...staff };
+      all[idx] = { ...all[idx], ...finalStaff };
     } else {
-      all.push(staff);
+      all.push(finalStaff);
     }
     localStorage.setItem('sorga_staff', JSON.stringify(all));
     return { success: true };

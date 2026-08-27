@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Settings, ShieldAlert, Users, Plus, X, Power, Save, Upload, Edit, Trash2, Image, MessageSquare, Star } from 'lucide-react';
+import { RefreshCw, Settings, ShieldAlert, Users, Plus, X, Power, Save, Upload, Edit, Trash2, Image, MessageSquare, Star, KeyRound } from 'lucide-react';
 import { db } from '../../utils/db';
 import GlassCard from '../../components/GlassCard';
 import { DEFAULT_LOGO, updateFavicon } from '../../utils/logoHelper';
@@ -621,10 +621,11 @@ export default function PengaturanSistem() {
     const sessionStr = sessionStorage.getItem('sorga_session');
     const adminName = sessionStr ? JSON.parse(sessionStr).user.nama : 'Admin';
     
-    const staffId = `USR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const staffData = {
-      ...newStaff,
-      id_user: staffId,
+      nama: newStaff.nama.trim(),
+      username: newStaff.username.trim().toLowerCase(),
+      role: newStaff.role,
+      status: newStaff.status || 'Aktif',
       must_change_password: true
     };
 
@@ -635,6 +636,36 @@ export default function PengaturanSistem() {
       showAlert.success("Staf Baru Terdaftar", `Akun staf ${newStaff.nama} berhasil didaftarkan ke sistem.`);
       setNewStaff({ nama: '', username: '', role: 'Kasir', status: 'Aktif' });
       loadSettingsData();
+    } else {
+      showAlert.error("Gagal Mendaftar", res.message || "Gagal menyimpan akun staf.");
+    }
+  };
+
+  // Toggle Sandi Sementara / Wajib Ganti Password
+  const handleToggleStaffTemporaryPassword = async (staff) => {
+    const sessionStr = sessionStorage.getItem('sorga_session');
+    const adminName = sessionStr ? JSON.parse(sessionStr).user.nama : 'Admin';
+
+    const newStatus = !staff.must_change_password;
+    const confirmText = newStatus 
+      ? `Tandai akun "${staff.nama}" sebagai pengguna kata sandi sementara? Banner notifikasi wajib ganti sandi akan muncul saat staf masuk.`
+      : `Hapus tanda kata sandi sementara untuk akun "${staff.nama}"?`;
+
+    const confirmRes = await showAlert.confirm("Konfirmasi Status Sandi", confirmText);
+    if (!confirmRes.isConfirmed) return;
+
+    const updated = {
+      ...staff,
+      must_change_password: newStatus
+    };
+
+    const res = await db.saveStaff(updated);
+    if (res.success) {
+      db.addActivityLog(adminName, 'Ubah Status Sandi Staf', `Mengubah status must_change_password staf ${staff.nama} menjadi ${newStatus}`);
+      showAlert.success("Status Sandi Diperbarui", `Status kata sandi staf ${staff.nama} berhasil diperbarui.`);
+      loadSettingsData();
+    } else {
+      showAlert.error("Gagal", res.message || "Gagal memperbarui status kata sandi staf.");
     }
   };
 
@@ -657,6 +688,8 @@ export default function PengaturanSistem() {
       db.addActivityLog(adminName, 'Toggle Status Staf', `Mengubah status staf ${staff.nama} menjadi ${updated.status}`);
       showAlert.success("Status Staf Diperbarui", `Akun staf ${staff.nama} kini berstatus ${updated.status}.`);
       loadSettingsData();
+    } else {
+      showAlert.error("Gagal", res.message || "Gagal memperbarui status staf.");
     }
   };
 
@@ -1140,7 +1173,7 @@ export default function PengaturanSistem() {
                     <td className="py-3 px-3 font-bold">{s.nama}</td>
                     <td className="py-3 px-3 font-mono">{s.username}</td>
                     <td className="py-3 px-3 uppercase font-semibold text-court-green">{s.role}</td>
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-3 text-center space-y-1">
                       <span className={`inline-block py-0.5 px-2.5 rounded-full text-[10px] font-bold uppercase ${
                         s.status === 'Aktif' 
                           ? 'bg-status-success/20 text-court-green' 
@@ -1148,20 +1181,40 @@ export default function PengaturanSistem() {
                       }`}>
                         {s.status}
                       </span>
+                      {s.must_change_password && (
+                        <div>
+                          <span className="inline-block py-0.5 px-2 rounded bg-amber-500/20 text-amber-900 border border-amber-500/30 text-[9px] font-bold uppercase">
+                            ⚠️ Sandi Sementara
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-3 text-right">
-                      {s.username !== 'admin' && (
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
                         <button
-                          onClick={() => handleToggleStaffStatus(s)}
-                          className={`inline-flex items-center gap-1 py-1 px-2.5 rounded text-[10px] font-bold uppercase cursor-pointer ${
-                            s.status === 'Aktif'
-                              ? 'bg-status-danger/15 text-status-danger hover:bg-status-danger/25'
-                              : 'bg-status-success/20 text-court-green hover:bg-status-success/30'
+                          onClick={() => handleToggleStaffTemporaryPassword(s)}
+                          title={s.must_change_password ? "Hapus status sandi sementara" : "Tandai wajib ganti sandi saat login"}
+                          className={`inline-flex items-center gap-1 py-1 px-2.5 rounded text-[10px] font-bold uppercase cursor-pointer transition-colors ${
+                            s.must_change_password
+                              ? 'bg-amber-500/20 text-amber-900 hover:bg-amber-500/30'
+                              : 'bg-chalk-line/15 text-net-charcoal/70 hover:bg-chalk-line/25'
                           }`}
                         >
-                          <Power size={10} /> {s.status === 'Aktif' ? 'Matikan' : 'Aktifkan'}
+                          <KeyRound size={10} /> {s.must_change_password ? 'Sandi Reset' : 'Set Sandi Sementara'}
                         </button>
-                      )}
+                        {s.username !== 'admin' && (
+                          <button
+                            onClick={() => handleToggleStaffStatus(s)}
+                            className={`inline-flex items-center gap-1 py-1 px-2.5 rounded text-[10px] font-bold uppercase cursor-pointer ${
+                              s.status === 'Aktif'
+                                ? 'bg-status-danger/15 text-status-danger hover:bg-status-danger/25'
+                                : 'bg-status-success/20 text-court-green hover:bg-status-success/30'
+                            }`}
+                          >
+                            <Power size={10} /> {s.status === 'Aktif' ? 'Matikan' : 'Aktifkan'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
