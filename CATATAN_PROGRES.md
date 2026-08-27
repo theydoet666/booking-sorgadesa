@@ -1,13 +1,51 @@
 # 📋 Rangkuman Progres Kerja & Panduan Lanjutan
 **Proyek:** Aplikasi Booking Lapangan Badminton & POS — Sorga Desa Belega  
 **Tech Stack:** React (Vite) + Tailwind CSS + Supabase (PostgreSQL, Auth, Storage)  
-**Tanggal Update:** 26 Agustus 2026  
+**Tanggal Update:** 27 Agustus 2026  
 **Domain Target:** `https://sorgadesa.belega.id/`  
-**Status Terakhir:** 🟢 Selesai Dibangun, Di-Hardening, PRD Sync & Production Ready  
+**Status Terakhir:** 🟢 Selesai Dibangun, Logo & Favicon Pb. Sorga Belega Updated, Google Maps Fixed, Branch Unified to `main`, Production Ready  
 
 ---
 
-## 1. Rangkuman Pekerjaan & Penyempurnaan Hari Ini (24 Agustus 2026)
+## 1. Rangkuman Pekerjaan & Penyempurnaan Hari Ini (27 Agustus 2026)
+
+### A. Implementasi Logo & Favicon Resmi ("Pb. Sorga belega")
+1. **Pembuatan Asset Multi-Format (`public/`):**
+   - `favicon.ico`: Ikon format multi-resolusi (16x16, 32x32, 48x48, 64x64, 128x128, 256x256).
+   - `favicon.svg`: Format vektor SVG tajam untuk browser modern.
+   - `favicon.png` & `logo.png`: Format PNG 512x512 untuk Apple Touch Icon dan thumbnail preview.
+2. **Pembaruan Konfigurasi Default & HTML:**
+   - Memperbarui `DEFAULT_LOGO` di `src/utils/logoHelper.js` agar langsung mengarah ke logo baru.
+   - Menambahkan *early favicon sync script* di `<head>` `index.html` sehingga logo langsung tampil instan dari cache saat pertama kali dibuka tanpa jeda loading.
+
+---
+
+### B. Optimasi Kecepatan Loading & Query Paralel (`LandingPage.jsx` & `db.js`)
+1. **Parallel Data Fetching (`Promise.all`):**
+   - Mengubah pengambilan data `courts`, `schedule`, `settings`, `galeri`, dan `testimoni` dari sekuensial (waterfall) menjadi paralel (`Promise.all`), menghilangkan lag 1-3 detik saat pertama membuka halaman.
+2. **Caching Instan:**
+   - Menambahkan mekanisme cache otomatis `sorga_settings` ke `localStorage` saat fetch Supabase berhasil.
+
+---
+
+### C. Penyempurnaan Integrasi Google Maps & Perbaikan Blank Page
+1. **Pembaruan Lokasi Real:**
+   - Menetapkan koordinat dan link Google Maps Sorga Belega (`https://maps.app.goo.gl/MzJnD5G1rBiNyj9j6` dan embed iframe `src`).
+2. **Auto-Parser Tag Iframe (`PengaturanSistem.jsx`):**
+   - Input pengaturan peta di dashboard kini otomatis mengekstrak link `src` jika admin mem-paste seluruh tag HTML `<iframe>`.
+3. **Perbaikan Blank Page pada Iframe Map:**
+   - Menghapus atribut `sandbox` restriktif pada `<iframe>` di `LandingPage.jsx` sehingga saat pengunjung mengklik peta / tombol *"View larger map"*, halaman peta dan navigasi Google Maps terbuka lancar tanpa halaman kosong (*blank page*).
+
+---
+
+### D. Standarisasi Repository Git ke Branch `main`
+1. Menyatukan branch lokal dan remote ke standar modern **`main`**.
+2. Menghapus branch `master` lama di GitHub agar repositori bersih dan terstruktur.
+3. Sinkronisasi penuh seluruh commit ke `origin/main`.
+
+---
+
+## 2. Rangkuman Pekerjaan Sebelumnya (24 - 26 Agustus 2026)
 
 ### A. Desain Ulang & Penyempurnaan Section Testimoni (Landing Page)
 1. **Desain Kartu Modern & Responsif:**
