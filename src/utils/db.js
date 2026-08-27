@@ -501,63 +501,58 @@ export const db = {
     return JSON.parse(localStorage.getItem('sorga_staff')) || [];
   },
 
-  // Mendaftarkan staf baru (Buat auth user + profile record)
+  // Mendaftarkan staf baru (Gunakan RPC create_staff_user agar bebas batas rate-limit & auto-confirm)
   async registerStaff({ nama, username, password, role, status }) {
     const tempPassword = password || (role === 'Admin' ? 'admin123' : 'kasir123');
+    const cleanUsername = username.trim().toLowerCase();
 
     if (isSupabaseConfigured()) {
-      const email = username.includes('@') ? username : `${username}@sorgadesa.com`;
-
-      // 1. Buat akun Auth di Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: tempPassword,
-        options: {
-          data: {
-            nama,
-            username,
-            role
-          }
-        }
+      // 1. Panggil RPC create_staff_user di database Supabase
+      const { data: rpcRes, error: rpcError } = await supabase.rpc('create_staff_user', {
+        p_nama: nama.trim(),
+        p_username: cleanUsername,
+        p_password: tempPassword,
+        p_role: role
       });
 
-      if (authError) {
-        // Jika user auth sudah terdaftar, beri pesan informatif
-        if (authError.message && authError.message.includes('User already registered')) {
-          return { success: false, message: `Username/Email "${username}" sudah terdaftar di Supabase Auth!` };
+      if (!rpcError && rpcRes) {
+        if (rpcRes.success) {
+          const all = JSON.parse(localStorage.getItem('sorga_staff')) || [];
+          all.push({
+            id_user: rpcRes.id || `USR-${cleanUsername}`,
+            nama: nama.trim(),
+            username: cleanUsername,
+            role,
+            status: status || 'Aktif',
+            must_change_password: true
+          });
+          localStorage.setItem('sorga_staff', JSON.stringify(all));
+          return { success: true };
+        } else {
+          return { success: false, message: rpcRes.message || 'Gagal mendaftarkan akun staf.' };
         }
-        return { success: false, message: authError.message };
       }
 
-      const userId = authData?.user?.id;
-      if (userId) {
-        // 2. Simpan profil ke tabel profiles
-        const profilePayload = {
-          id: userId,
-          nama,
-          username,
-          role,
-          status: status || 'Aktif',
-          must_change_password: true
-        };
-
-        const { error: profileError } = await supabase.from('profiles').upsert([profilePayload], { onConflict: 'id' });
-        if (profileError) {
-          if (profileError.message && profileError.message.includes('must_change_password')) {
-            delete profilePayload.must_change_password;
-            await supabase.from('profiles').upsert([profilePayload], { onConflict: 'id' });
-          }
+      // Jika RPC belum dieksekusi di database Supabase
+      if (rpcError) {
+        console.warn("RPC create_staff_user error:", rpcError);
+        if (rpcError.message && (rpcError.message.includes('function') || rpcError.code === '42883' || rpcError.code === 'PGRST202')) {
+          return { 
+            success: false, 
+            message: 'Fungsi pendaftaran staf belum diaktifkan di database Supabase. Silakan jalankan script SQL Migration 05 di SQL Editor Supabase terlebih dahulu.' 
+          };
         }
+        return { success: false, message: rpcError.message };
       }
     }
 
-    // Simpan ke storage lokal
+    // Simpan ke storage lokal (mode dev/offline)
     const all = JSON.parse(localStorage.getItem('sorga_staff')) || [];
     const staffId = `USR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const newRecord = {
       id_user: staffId,
-      nama,
-      username,
+      nama: nama.trim(),
+      username: cleanUsername,
       role,
       status: status || 'Aktif',
       must_change_password: true
