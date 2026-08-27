@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, Calendar, CalendarClock, 
-  ShoppingCart, BarChart3, Settings, LogOut, Menu, X, UserCheck 
+  ShoppingCart, BarChart3, Settings, LogOut, Menu, X, UserCheck, KeyRound, AlertTriangle 
 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 import { db } from '../utils/db';
 import { DEFAULT_LOGO, updateFavicon } from '../utils/logoHelper';
 
@@ -13,6 +14,7 @@ import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userSession, setUserSession] = useState(null);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,7 +54,8 @@ export default function DashboardLayout() {
         }
       }
 
-      setUserSession(JSON.parse(sessionStr));
+      const parsed = JSON.parse(sessionStr);
+      setUserSession(parsed);
     };
 
     verifySession();
@@ -113,7 +116,15 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsChangePasswordOpen(true)}
+            title="Ubah Kata Sandi"
+            className="p-1.5 bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal text-shuttle-cream rounded-lg transition-all cursor-pointer"
+          >
+            <KeyRound size={16} />
+          </button>
+
           <div className="flex items-center gap-1.5 bg-chalk-line/10 py-1 px-2.5 rounded-lg border border-chalk-line/15 text-[10px] font-sans font-bold uppercase text-smash-lime">
             <UserCheck size={12} />
             <span>{userSession.user.role}</span>
@@ -151,14 +162,25 @@ export default function DashboardLayout() {
             </div>
           </div>
 
-          {/* User Profile */}
-          <div className="bg-chalk-line/5 border border-chalk-line/10 rounded-xl p-3.5 flex items-center gap-3 text-left">
-            <div className="w-10 h-10 rounded-full bg-rattan-gold text-court-green font-fraunces font-bold flex items-center justify-center text-base">
-              {userSession.user.nama.charAt(0)}
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-sans font-bold text-xs truncate text-shuttle-cream">{userSession.user.nama}</span>
-              <span className="font-mono text-[9px] uppercase tracking-wider text-smash-lime font-bold mt-0.5">{userSession.user.role}</span>
+          {/* User Profile Card with Change Password Action */}
+          <div className="bg-chalk-line/5 border border-chalk-line/10 rounded-xl p-3 flex flex-col gap-2 text-left">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-rattan-gold text-court-green font-fraunces font-bold flex items-center justify-center text-xs shrink-0">
+                  {userSession.user.nama.charAt(0)}
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="font-sans font-bold text-xs truncate text-shuttle-cream">{userSession.user.nama}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-smash-lime font-bold">{userSession.user.role}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChangePasswordOpen(true)}
+                title="Ubah Kata Sandi"
+                className="p-1.5 bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal text-shuttle-cream/80 rounded-lg transition-all cursor-pointer shrink-0"
+              >
+                <KeyRound size={14} />
+              </button>
             </div>
           </div>
 
@@ -218,8 +240,48 @@ export default function DashboardLayout() {
 
       {/* 3. Main Content Panel */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 min-h-[calc(100vh-4rem)] md:min-h-screen overflow-y-auto w-full max-w-6xl mx-auto flex flex-col text-left">
+        
+        {/* Temporary Password Security Notification Banner */}
+        {userSession?.user?.must_change_password && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-net-charcoal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-amber-900 font-sans">
+                  Pemberitahuan Keamanan: Kata Sandi Sementara
+                </h4>
+                <p className="text-xs text-amber-900/80 mt-0.5 font-sans leading-relaxed">
+                  Anda saat ini masih menggunakan kata sandi sementara. Demi keamanan data transaksi dan hak akses akun Anda, harap segera ubah kata sandi.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-sans font-bold text-xs uppercase tracking-wider rounded-xl shadow transition-all shrink-0 cursor-pointer flex items-center gap-2"
+            >
+              <KeyRound size={15} />
+              Ubah Sekarang
+            </button>
+          </div>
+        )}
+
         <Outlet />
       </main>
+
+      {/* Change Password Dialog Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userSession={userSession}
+        onSuccess={() => {
+          const sessionStr = sessionStorage.getItem('sorga_session');
+          if (sessionStr) {
+            setUserSession(JSON.parse(sessionStr));
+          }
+        }}
+      />
 
     </div>
   );

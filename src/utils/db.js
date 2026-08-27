@@ -41,8 +41,8 @@ const initLocalStorage = () => {
   }
   if (!localStorage.getItem('sorga_staff')) {
     const staff = [
-      { id_user: "USR-01", nama: "Admin Utama", username: "admin", role: "Super Admin", status: "Aktif" },
-      { id_user: "USR-02", nama: "Kasir Belega", username: "kasir", role: "Kasir", status: "Aktif" }
+      { id_user: "USR-01", nama: "Admin Utama", username: "admin", role: "Super Admin", status: "Aktif", must_change_password: false },
+      { id_user: "USR-02", nama: "Kasir Belega", username: "kasir", role: "Kasir", status: "Aktif", must_change_password: true }
     ];
     localStorage.setItem('sorga_staff', JSON.stringify(staff));
   }

@@ -624,7 +624,8 @@ export default function PengaturanSistem() {
     const staffId = `USR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const staffData = {
       ...newStaff,
-      id_user: staffId
+      id_user: staffId,
+      must_change_password: true
     };
 
     const res = await db.saveStaff(staffData);

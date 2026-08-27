@@ -45,6 +45,33 @@
 
 ---
 
+### E. Hardening Keamanan Login & Eliminasi Dead-Code Dev Mock
+1. **Isolasi Dev Mock Auth (`devMockAuth.js`):**
+   - Memindahkan seluruh logika fallback password sandbox ke modul terpisah dengan guard `import.meta.env.DEV` (dynamic import), sehingga ter-tree-shake 100% dan tidak pernah masuk ke bundle production `dist/`.
+2. **Pengetatan CORS (`vite.config.js`):**
+   - Menghapus wildcard `Access-Control-Allow-Origin: *` dari dev server.
+3. **Pembaruan Panduan `.env.example`:**
+   - Menegaskan kewajiban konfigurasi Supabase saat deployment production.
+4. **Fitur Toggle Password:**
+   - Menambahkan ikon mata show/hide password pada form login.
+
+---
+
+### F. Fitur Ganti Kata Sandi Mandiri & Banner Notifikasi Password Sementara
+1. **Komponen `ChangePasswordModal.jsx`:**
+   - Menyediakan form ganti kata sandi mandiri bagi Admin, Kasir, dan Super Admin via Supabase Auth (`supabase.auth.updateUser`).
+   - Validasi minimal 6 karakter, konfirmasi kecocokan kata sandi, dan toggle show/hide password.
+2. **Aksesibilitas Seluruh Peran (`DashboardLayout.jsx`):**
+   - Tombol ikon kunci (`KeyRound`) di kartu profil pengguna (Sidebar desktop & Header mobile) agar Kasir dan Admin dapat mengganti password dengan cepat kapan saja.
+3. **Banner Notifikasi Password Sementara (`must_change_password`):**
+   - Banner peringatan dinamis berwarna amber di bagian atas dashboard jika akun baru/reset masih menggunakan password sementara.
+   - Tombol *"Ubah Sekarang"* pada banner untuk memunculkan modal ganti kata sandi secara instan.
+   - Status `must_change_password` otomatis disetel `false` setelah berhasil mengganti kata sandi dan tercatat di `log_aktivitas`.
+4. **SQL Migration 05 (`supabase/migrations/05_add_must_change_password.sql`):**
+   - Penambahan kolom `must_change_password` pada tabel `profiles` dengan RLS update mandiri.
+
+---
+
 ## 2. Rangkuman Pekerjaan Sebelumnya (24 - 26 Agustus 2026)
 
 ### A. Desain Ulang & Penyempurnaan Section Testimoni (Landing Page)

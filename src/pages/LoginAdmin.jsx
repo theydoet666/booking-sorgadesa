@@ -92,9 +92,11 @@ export default function LoginAdmin() {
       sessionStorage.setItem('sorga_session', JSON.stringify({
         token: data.session.access_token,
         user: {
+          id: profile.id,
           nama: profile.nama,
           username: profile.username,
-          role: profile.role
+          role: profile.role,
+          must_change_password: Boolean(profile.must_change_password)
         }
       }));
 

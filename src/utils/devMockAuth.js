@@ -36,9 +36,11 @@ export async function handleDevMockLogin({ username, password, db, navigate, set
   sessionStorage.setItem('sorga_session', JSON.stringify({
     token: `mock-token-${Date.now()}`,
     user: {
+      id: user.id_user || user.id || 'mock-id',
       nama: user.nama,
       username: user.username,
-      role: user.role
+      role: user.role,
+      must_change_password: Boolean(user.must_change_password)
     }
   }));
 
