@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- Migration 05: Fitur Ganti Password, Notifikasi Sandi Sementara, & RPC Pendaftaran Staf
 -- Deskripsi: Menambahkan kolom must_change_password dan fungsi create_staff_user 
---            agar pendaftaran staf oleh Super Admin bebas batas rate-limit (429).
+--            serta auto-generate id_user (USR-01, USR-02, dst.) agar tidak NULL.
 -- ==============================================================================
 
 -- 1. Pastikan ekstensi pgcrypto aktif untuk enkripsi password bcrypt
@@ -12,6 +12,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
         -- 2. Tambahkan kolom must_change_password jika belum ada
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS id_user VARCHAR(50);
         
         -- 3. Berikan izin UPDATE profil mandiri bagi pengguna terautentikasi
         DROP POLICY IF EXISTS "Users can update own must_change_password" ON profiles;
@@ -25,11 +26,20 @@ BEGIN
         CREATE POLICY "Allow staff profile insertion" ON profiles
             FOR INSERT TO authenticated, anon
             WITH CHECK (id = auth.uid() OR get_current_user_role() = 'Super Admin' OR is_admin() OR auth.uid() IS NOT NULL);
+
+        -- 5. Perbaiki id_user yang masih NULL pada data yang sudah ada
+        UPDATE profiles 
+        SET id_user = 'USR-' || LPAD(row_num::text, 2, '0')
+        FROM (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC) as row_num 
+            FROM profiles
+        ) sub
+        WHERE profiles.id = sub.id AND (profiles.id_user IS NULL OR profiles.id_user = '');
     END IF;
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 5. FUNCTION RPC: create_staff_user (Pendaftaran Staf Tanpa Batasan Rate-Limit)
+-- 6. FUNCTION RPC: create_staff_user (Pendaftaran Staf Tanpa Batasan Rate-Limit)
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION create_staff_user(
     p_nama VARCHAR,
@@ -47,6 +57,7 @@ DECLARE
     v_email VARCHAR;
     v_encrypted_pw VARCHAR;
     v_creator_role VARCHAR;
+    v_custom_id_user VARCHAR;
 BEGIN
     -- Verifikasi otorisasi: hanya Super Admin atau Admin yang boleh mendaftarkan staf
     IF auth.uid() IS NOT NULL THEN
@@ -65,6 +76,9 @@ BEGIN
     IF EXISTS (SELECT 1 FROM profiles WHERE LOWER(username) = LOWER(TRIM(p_username))) THEN
         RAISE EXCEPTION 'Username "%" sudah digunakan oleh staf lain.', p_username;
     END IF;
+
+    -- Generate format id_user otomatis (USR-01, USR-02, dst.)
+    v_custom_id_user := 'USR-' || LPAD((COALESCE((SELECT COUNT(*) FROM profiles), 0) + 1)::text, 2, '0');
 
     -- Cek jika email sudah terdaftar di auth.users
     IF EXISTS (SELECT 1 FROM auth.users WHERE LOWER(email) = v_email) THEN
@@ -112,6 +126,7 @@ BEGIN
     -- Masukkan atau perbarui profil staf di tabel profiles
     INSERT INTO profiles (
         id,
+        id_user,
         nama,
         username,
         role,
@@ -119,6 +134,7 @@ BEGIN
         must_change_password
     ) VALUES (
         v_user_id,
+        v_custom_id_user,
         p_nama,
         LOWER(TRIM(p_username)),
         p_role,
@@ -126,6 +142,7 @@ BEGIN
         true
     )
     ON CONFLICT (id) DO UPDATE SET
+        id_user = COALESCE(profiles.id_user, v_custom_id_user),
         nama = EXCLUDED.nama,
         username = EXCLUDED.username,
         role = EXCLUDED.role,
@@ -135,6 +152,7 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'id', v_user_id,
+        'id_user', v_custom_id_user,
         'message', 'Akun staf berhasil didaftarkan.'
     );
 EXCEPTION WHEN OTHERS THEN
