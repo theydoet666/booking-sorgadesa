@@ -1,7 +1,8 @@
 -- ==============================================================================
--- Migration 05: Fitur Ganti Password, Notifikasi Sandi Sementara, & RPC Pendaftaran Staf
--- Deskripsi: Menambahkan kolom must_change_password dan fungsi create_staff_user 
---            serta auto-generate id_user (USR-01, USR-02, dst.) agar tidak NULL.
+-- Migration 05: Fitur Ganti Password, Notifikasi Sandi Sementara, RPC Pendaftaran Staf,
+--               & Migrasi Domain Email (@sorgadesa.belega.id)
+-- Deskripsi: Menambahkan kolom must_change_password, auto-generate id_user,
+--            dan memperbarui domain email seluruh akun ke @sorgadesa.belega.id.
 -- ==============================================================================
 
 -- 1. Pastikan ekstensi pgcrypto aktif untuk enkripsi password bcrypt
@@ -28,7 +29,7 @@ BEGIN
             FOR INSERT TO authenticated, anon
             WITH CHECK (id = auth.uid() OR get_current_user_role() = 'Super Admin' OR is_admin() OR auth.uid() IS NOT NULL);
 
-        -- 5. Perbaiki id_user yang masih NULL pada data yang sudah ada
+        -- 5. Perbaiki id_user yang masih NULL pada data yang sudah ada (USR-01, USR-02, dst.)
         UPDATE profiles 
         SET id_user = 'USR-' || LPAD(row_num::text, 2, '0')
         FROM (
@@ -45,10 +46,17 @@ BEGIN
         ) sub
         WHERE profiles.id = sub.id AND (profiles.id_user IS NULL OR profiles.id_user = '');
     END IF;
+
+    -- 6. Migrasikan seluruh email lama di auth.users dari @sorgadesa.com ke @sorgadesa.belega.id
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') THEN
+        UPDATE auth.users 
+        SET email = REPLACE(email, '@sorgadesa.com', '@sorgadesa.belega.id')
+        WHERE email LIKE '%@sorgadesa.com';
+    END IF;
 END $$;
 
 -- ------------------------------------------------------------------------------
--- 6. FUNCTION RPC: create_staff_user (Pendaftaran Staf Tanpa Batasan Rate-Limit)
+-- 7. FUNCTION RPC: create_staff_user (Pendaftaran Staf Tanpa Batasan Rate-Limit)
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION create_staff_user(
     p_nama VARCHAR,
@@ -79,7 +87,8 @@ BEGIN
         END IF;
     END IF;
 
-    v_email := LOWER(TRIM(p_username)) || '@sorgadesa.com';
+    -- Domain email resmi sistem: @sorgadesa.belega.id
+    v_email := LOWER(TRIM(p_username)) || '@sorgadesa.belega.id';
 
     -- Cek jika username sudah terdaftar di tabel profiles
     IF EXISTS (SELECT 1 FROM profiles WHERE LOWER(username) = LOWER(TRIM(p_username))) THEN

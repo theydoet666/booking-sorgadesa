@@ -65,8 +65,8 @@ export default function LoginAdmin() {
 
     try {
       // Supabase Auth Integration
-      // Asumsi: Username diubah ke format email untuk login auth.users
-      const email = username.includes('@') ? username : `${username}@sorgadesa.com`;
+      // Username diubah ke format email @sorgadesa.belega.id untuk login auth.users
+      const email = username.includes('@') ? username : `${username}@sorgadesa.belega.id`;
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
