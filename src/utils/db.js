@@ -479,12 +479,47 @@ export const db = {
     }
   },
 
-  // === LOG AKTIVITAS ===
+  // === LOG AKTIVITAS (AUDIT TRAIL) ===
   async addActivityLog(user, action, detail) {
+    const timestamp = new Date().toISOString();
     if (isSupabaseConfigured()) {
-      await supabase.from('log_aktivitas').insert([{ user_nama: user, aksi: action, detail }]);
+      try {
+        await supabase.from('log_aktivitas').insert([{ 
+          user_nama: user, 
+          aksi: action, 
+          detail,
+          timestamp 
+        }]);
+      } catch (err) {
+        console.warn("Gagal menyimpan log aktivitas ke Supabase:", err);
+      }
     }
-    // Sandbox log to console/optional list
+    // Simpan ke storage lokal untuk cache & sandbox mode
+    const logs = JSON.parse(localStorage.getItem('sorga_activity_logs')) || [];
+    logs.unshift({
+      id_log: `LOG-${Date.now()}`,
+      timestamp,
+      user_nama: user,
+      aksi: action,
+      detail
+    });
+    // Batasi maksimum 200 log di local storage agar ringan
+    if (logs.length > 200) logs.pop();
+    localStorage.setItem('sorga_activity_logs', JSON.stringify(logs));
+  },
+
+  async getActivityLogs(limit = 100) {
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('log_aktivitas')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+      if (!error && data) {
+        return data;
+      }
+    }
+    return JSON.parse(localStorage.getItem('sorga_activity_logs')) || [];
   },
 
   // === USERS / STAFF ===

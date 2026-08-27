@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Settings, ShieldAlert, Users, Plus, X, Power, Save, Upload, Edit, Trash2, Image, MessageSquare, Star, KeyRound } from 'lucide-react';
+import { RefreshCw, Settings, ShieldAlert, Users, Plus, X, Power, Save, Upload, Edit, Trash2, Image, MessageSquare, Star, KeyRound, History, Search, Filter, ShieldCheck, Activity, User, FileText } from 'lucide-react';
 import { db } from '../../utils/db';
 import GlassCard from '../../components/GlassCard';
 import { DEFAULT_LOGO, updateFavicon } from '../../utils/logoHelper';
@@ -137,9 +137,34 @@ export default function PengaturanSistem() {
     urutan: 0
   });
 
+  // 5. State Log Aktivitas / Audit Trail (Khusus Super Admin)
+  const sessionStr = sessionStorage.getItem('sorga_session');
+  const currentUser = sessionStr ? JSON.parse(sessionStr).user : null;
+  const isSuperAdmin = currentUser?.role === 'Super Admin';
+
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [logUserFilter, setLogUserFilter] = useState('ALL');
+  const [logCategoryFilter, setLogCategoryFilter] = useState('ALL');
+  const [currentLogPage, setCurrentLogPage] = useState(1);
+  const logsPerPage = 12;
+
   useEffect(() => {
     loadSettingsData();
   }, []);
+
+  const loadActivityLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const logs = await db.getActivityLogs(250);
+      setActivityLogs(logs || []);
+    } catch (err) {
+      console.warn("Gagal memuat log aktivitas:", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   const loadSettingsData = async () => {
     setLoading(true);
@@ -164,6 +189,10 @@ export default function PengaturanSistem() {
 
       const testimonials = await db.getTestimonials();
       setTestimonialList(testimonials);
+
+      if (isSuperAdmin) {
+        loadActivityLogs();
+      }
 
     } catch (err) {
       console.error(err);
@@ -771,6 +800,20 @@ export default function PengaturanSistem() {
         >
           Konten Landing Page
         </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => {
+              setActiveSubTab('log');
+              loadActivityLogs();
+            }}
+            className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'log' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
+            }`}
+          >
+            <History size={14} />
+            <span>Log Audit Sistem</span>
+          </button>
+        )}
       </div>
 
       {/* 1. TAB UMUM */}
@@ -1759,6 +1802,247 @@ export default function PengaturanSistem() {
             </button>
           </form>
         </GlassCard>
+      )}
+
+      {/* 6. TAB LOG AUDIT SISTEM (KHUSUS SUPER ADMIN) */}
+      {activeSubTab === 'log' && isSuperAdmin && (
+        <div className="space-y-4 text-left font-sans">
+          <GlassCard lPost className="border border-net-charcoal/10 relative p-5 space-y-4">
+            {/* Header Tab */}
+            <div className="border-b border-rattan-gold/15 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-fraunces font-bold text-base text-net-charcoal flex items-center gap-2">
+                  <History size={18} className="text-court-green" />
+                  Log Audit & Rekam Aktivitas Staf
+                </h3>
+                <p className="text-xs text-net-charcoal/60 mt-0.5">
+                  Catatan kronologis seluruh aktivitas login, transaksi POS, pengelolaan booking, dan pengaturan sistem oleh staf.
+                </p>
+              </div>
+              <button
+                onClick={loadActivityLogs}
+                disabled={loadingLogs}
+                className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 bg-court-green text-shuttle-cream font-sans font-bold text-xs uppercase tracking-wider rounded-lg shadow hover:bg-court-green/95 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 self-start sm:self-auto"
+              >
+                <RefreshCw size={13} className={loadingLogs ? "animate-spin" : ""} />
+                <span>{loadingLogs ? "Memuat..." : "Segarkan Log"}</span>
+              </button>
+            </div>
+
+            {/* Filter Toolbar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-3 text-net-charcoal/40" />
+                <input
+                  type="text"
+                  placeholder="Cari nama staf, aksi, detail..."
+                  value={logSearch}
+                  onChange={(e) => {
+                    setLogSearch(e.target.value);
+                    setCurrentLogPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 text-xs font-sans text-net-charcoal placeholder:text-net-charcoal/40"
+                />
+              </div>
+
+              {/* Filter Staf */}
+              <div className="relative">
+                <User size={14} className="absolute left-3 top-3 text-net-charcoal/40" />
+                <select
+                  value={logUserFilter}
+                  onChange={(e) => {
+                    setLogUserFilter(e.target.value);
+                    setCurrentLogPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 text-xs font-sans text-net-charcoal cursor-pointer font-medium"
+                >
+                  <option value="ALL">Semua Pengguna</option>
+                  {Array.from(new Set(activityLogs.map(l => l.user_nama).filter(Boolean))).map(u => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Kategori Aksi */}
+              <div className="relative">
+                <Filter size={14} className="absolute left-3 top-3 text-net-charcoal/40" />
+                <select
+                  value={logCategoryFilter}
+                  onChange={(e) => {
+                    setLogCategoryFilter(e.target.value);
+                    setCurrentLogPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 text-xs font-sans text-net-charcoal cursor-pointer font-medium"
+                >
+                  <option value="ALL">Semua Kategori Aksi</option>
+                  <option value="AUTH">Autentikasi (Login & Password)</option>
+                  <option value="BOOKING">Booking & Jadwal Member</option>
+                  <option value="POS">Transaksi Kasir POS</option>
+                  <option value="SYSTEM">Pengaturan & Staf</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table of Activity Logs */}
+            <div className="overflow-x-auto custom-scrollbar border border-net-charcoal/10 rounded-lg">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <thead>
+                  <tr className="bg-court-green/5 border-b border-net-charcoal/10 text-net-charcoal/60 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-2.5 px-3.5 whitespace-nowrap">Waktu & Tanggal</th>
+                    <th className="py-2.5 px-3.5 whitespace-nowrap">Pengguna</th>
+                    <th className="py-2.5 px-3.5 whitespace-nowrap">Jenis Aksi</th>
+                    <th className="py-2.5 px-3.5">Detail Aktivitas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-net-charcoal/5 font-medium text-net-charcoal/80">
+                  {(() => {
+                    const filtered = activityLogs.filter(item => {
+                      if (logUserFilter !== 'ALL' && item.user_nama !== logUserFilter) return false;
+                      if (logCategoryFilter !== 'ALL') {
+                        const a = (item.aksi || '').toLowerCase();
+                        if (logCategoryFilter === 'AUTH' && !a.includes('login') && !a.includes('sandi') && !a.includes('password')) return false;
+                        if (logCategoryFilter === 'BOOKING' && !a.includes('booking') && !a.includes('jadwal') && !a.includes('member')) return false;
+                        if (logCategoryFilter === 'POS' && !a.includes('pos') && !a.includes('produk') && !a.includes('kasir')) return false;
+                        if (logCategoryFilter === 'SYSTEM' && (a.includes('login') || a.includes('booking') || a.includes('pos'))) return false;
+                      }
+                      if (logSearch.trim()) {
+                        const q = logSearch.toLowerCase();
+                        const matchUser = (item.user_nama || '').toLowerCase().includes(q);
+                        const matchAksi = (item.aksi || '').toLowerCase().includes(q);
+                        const matchDetail = (item.detail || '').toLowerCase().includes(q);
+                        if (!matchUser && !matchAksi && !matchDetail) return false;
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-net-charcoal/50 text-xs italic">
+                            {loadingLogs ? "Sedang memuat data log..." : "Tidak ada riwayat aktivitas yang sesuai dengan filter."}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const totalPages = Math.ceil(filtered.length / logsPerPage) || 1;
+                    const startIdx = (currentLogPage - 1) * logsPerPage;
+                    const pageItems = filtered.slice(startIdx, startIdx + logsPerPage);
+
+                    return pageItems.map((log, idx) => {
+                      const a = (log.aksi || '').toLowerCase();
+                      let badgeStyle = 'bg-purple-500/15 text-purple-900 border-purple-500/20';
+                      if (a.includes('login') || a.includes('sandi') || a.includes('password')) {
+                        badgeStyle = 'bg-emerald-500/15 text-emerald-800 border-emerald-500/20';
+                      } else if (a.includes('booking') || a.includes('jadwal') || a.includes('member')) {
+                        badgeStyle = 'bg-blue-500/15 text-blue-800 border-blue-500/20';
+                      } else if (a.includes('pos') || a.includes('produk') || a.includes('kasir')) {
+                        badgeStyle = 'bg-amber-500/15 text-amber-900 border-amber-500/20';
+                      }
+
+                      let dateFormatted = '-';
+                      if (log.timestamp) {
+                        try {
+                          const d = new Date(log.timestamp);
+                          dateFormatted = d.toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          });
+                        } catch (e) {
+                          dateFormatted = log.timestamp;
+                        }
+                      }
+
+                      return (
+                        <tr key={log.id_log || idx} className="hover:bg-court-green/5 transition-colors">
+                          <td className="py-2.5 px-3.5 font-mono text-[11px] text-net-charcoal/60 whitespace-nowrap">
+                            {dateFormatted}
+                          </td>
+                          <td className="py-2.5 px-3.5 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-net-charcoal">
+                              <span className="w-5 h-5 rounded-full bg-court-green/15 text-court-green text-[10px] font-bold flex items-center justify-center">
+                                {(log.user_nama || 'U').charAt(0).toUpperCase()}
+                              </span>
+                              {log.user_nama || 'Sistem'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 whitespace-nowrap">
+                            <span className={`inline-block py-0.5 px-2.5 rounded-full text-[10px] font-bold uppercase border ${badgeStyle}`}>
+                              {log.aksi}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-xs text-net-charcoal/80">
+                            {log.detail || '-'}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {(() => {
+              const filtered = activityLogs.filter(item => {
+                if (logUserFilter !== 'ALL' && item.user_nama !== logUserFilter) return false;
+                if (logCategoryFilter !== 'ALL') {
+                  const a = (item.aksi || '').toLowerCase();
+                  if (logCategoryFilter === 'AUTH' && !a.includes('login') && !a.includes('sandi') && !a.includes('password')) return false;
+                  if (logCategoryFilter === 'BOOKING' && !a.includes('booking') && !a.includes('jadwal') && !a.includes('member')) return false;
+                  if (logCategoryFilter === 'POS' && !a.includes('pos') && !a.includes('produk') && !a.includes('kasir')) return false;
+                  if (logCategoryFilter === 'SYSTEM' && (a.includes('login') || a.includes('booking') || a.includes('pos'))) return false;
+                }
+                if (logSearch.trim()) {
+                  const q = logSearch.toLowerCase();
+                  const matchUser = (item.user_nama || '').toLowerCase().includes(q);
+                  const matchAksi = (item.aksi || '').toLowerCase().includes(q);
+                  const matchDetail = (item.detail || '').toLowerCase().includes(q);
+                  if (!matchUser && !matchAksi && !matchDetail) return false;
+                }
+                return true;
+              });
+
+              const totalPages = Math.ceil(filtered.length / logsPerPage) || 1;
+              if (totalPages <= 1) return null;
+
+              const startCount = (currentLogPage - 1) * logsPerPage + 1;
+              const endCount = Math.min(currentLogPage * logsPerPage, filtered.length);
+
+              return (
+                <div className="flex items-center justify-between border-t border-net-charcoal/10 pt-3 text-xs font-sans">
+                  <span className="text-net-charcoal/60">
+                    Menampilkan {startCount}-{endCount} dari {filtered.length} riwayat log
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentLogPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentLogPage === 1}
+                      className="py-1 px-3 bg-court-green/10 text-court-green rounded font-bold uppercase tracking-wider hover:bg-court-green/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      Sebelumnya
+                    </button>
+                    <span className="font-bold text-net-charcoal px-1">
+                      {currentLogPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentLogPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentLogPage === totalPages}
+                      className="py-1 px-3 bg-court-green/10 text-court-green rounded font-bold uppercase tracking-wider hover:bg-court-green/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      Selanjutnya
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </GlassCard>
+        </div>
       )}
 
       {/* New Staff Registration Modal */}
