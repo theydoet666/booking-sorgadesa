@@ -10,9 +10,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
-        -- 2. Tambahkan kolom must_change_password jika belum ada
+        -- 2. Tambahkan kolom yang diperlukan jika belum ada
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS id_user VARCHAR(50);
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
         
         -- 3. Berikan izin UPDATE profil mandiri bagi pengguna terautentikasi
         DROP POLICY IF EXISTS "Users can update own must_change_password" ON profiles;
@@ -31,7 +32,15 @@ BEGIN
         UPDATE profiles 
         SET id_user = 'USR-' || LPAD(row_num::text, 2, '0')
         FROM (
-            SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC) as row_num 
+            SELECT id, ROW_NUMBER() OVER (
+                ORDER BY 
+                    CASE 
+                        WHEN username = 'admin' THEN 1 
+                        WHEN username = 'kasir' THEN 2 
+                        ELSE 3 
+                    END, 
+                    username ASC
+            ) as row_num 
             FROM profiles
         ) sub
         WHERE profiles.id = sub.id AND (profiles.id_user IS NULL OR profiles.id_user = '');
