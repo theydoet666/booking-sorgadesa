@@ -70,35 +70,32 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const dbCourts = await db.getCourts();
+        const [dbCourts, dbBookings, dbSettings, galleryRes, testimonialsRes] = await Promise.all([
+          db.getCourts(),
+          db.getPublicSchedule(selectedDate),
+          db.getSettings(),
+          isSupabaseConfigured() ? supabase.from('galeri').select('*').eq('status', 'Aktif').order('urutan', { ascending: true }) : Promise.resolve(null),
+          isSupabaseConfigured() ? supabase.from('testimoni').select('*').eq('status', 'Aktif').order('urutan', { ascending: true }) : Promise.resolve(null)
+        ]);
+
         if (dbCourts) setCourts(dbCourts);
-
-        const dbBookings = await db.getPublicSchedule(selectedDate);
         if (dbBookings) setBookings(dbBookings);
-
-        const dbSettings = await db.getSettings();
         if (dbSettings) {
           setSettings(dbSettings);
-          updateFavicon(dbSettings.logo_url || DEFAULT_LOGO);
+          if (dbSettings.logo_url) {
+            updateFavicon(dbSettings.logo_url);
+          }
         }
 
-        // Fallbacks untuk Galeri dan Testimoni
-        if (isSupabaseConfigured()) {
-          const { data: dbGallery } = await supabase
-            .from('galeri')
-            .select('*')
-            .eq('status', 'Aktif')
-            .order('urutan', { ascending: true });
-          if (dbGallery) setGallery(dbGallery);
-
-          const { data: dbTestimonials } = await supabase
-            .from('testimoni')
-            .select('*')
-            .eq('status', 'Aktif')
-            .order('urutan', { ascending: true });
-          if (dbTestimonials) setTestimonials(dbTestimonials);
-        } else {
+        if (galleryRes && galleryRes.data) {
+          setGallery(galleryRes.data);
+        } else if (!isSupabaseConfigured()) {
           setGallery(JSON.parse(localStorage.getItem('sorga_gallery')) || MOCK_GALLERY);
+        }
+
+        if (testimonialsRes && testimonialsRes.data) {
+          setTestimonials(testimonialsRes.data);
+        } else if (!isSupabaseConfigured()) {
           setTestimonials(JSON.parse(localStorage.getItem('sorga_testimonials')) || MOCK_TESTIMONIALS);
         }
       } catch (err) {

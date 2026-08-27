@@ -14,8 +14,29 @@
     <link rel="canonical" href="https://sorgadesa.belega.id/" />
 
     <!-- Favicon & Brand Icons -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link id="app-favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="theme-color" content="#1B4A3F" />
+
+    <!-- Early Favicon Sync Script from Local Storage Cache -->
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('sorga_settings');
+          if (raw) {
+            var s = JSON.parse(raw);
+            if (s && s.logo_url) {
+              var fav = document.getElementById('app-favicon');
+              if (fav) {
+                fav.href = s.logo_url;
+                fav.type = s.logo_url.endsWith('.ico') ? 'image/x-icon' : (s.logo_url.startsWith('data:image/svg') || s.logo_url.endsWith('.svg')) ? 'image/svg+xml' : 'image/png';
+              }
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Open Graph / Facebook / WhatsApp Preview -->
     <meta property="og:type" content="website" />

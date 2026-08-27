@@ -385,13 +385,17 @@ export const db = {
   async getSettings() {
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase.from('pengaturan').select('*');
-      if (!error && data.length > 0) {
+      if (!error && data && data.length > 0) {
         const formatted = {};
         data.forEach(s => { formatted[s.key] = s.value; });
-        return { ...MOCK_SETTINGS, ...formatted };
+        const merged = { ...MOCK_SETTINGS, ...formatted };
+        try {
+          localStorage.setItem('sorga_settings', JSON.stringify(merged));
+        } catch (e) {}
+        return merged;
       }
     }
-    return JSON.parse(localStorage.getItem('sorga_settings'));
+    return JSON.parse(localStorage.getItem('sorga_settings')) || MOCK_SETTINGS;
   },
 
   async saveSettings(data) {
