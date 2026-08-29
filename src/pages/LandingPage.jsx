@@ -20,6 +20,49 @@ import { showAlert } from '../utils/alertHelper';
 import { getTodayLocalStr } from '../utils/dateHelper';
 import ModernHero from '../components/ModernHero';
 
+// Helper Validasi URL Aman untuk Google Maps Iframe (Anti Iframe Injection/XSS)
+const getSafeGoogleMapsUrl = (rawUrl) => {
+  const DEFAULT_MAP = "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d1170.0072306116913!2d115.3106892!3d-8.5571817!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd2172940bd7bcf%3A0xd1d39209ea6f06c8!2sSorga%20Belega!5e1!3m2!1sen!2sid!4v1787796501037!5m2!1sen!2sid";
+  if (!rawUrl) return DEFAULT_MAP;
+
+  let urlCandidate = String(rawUrl).trim();
+  const match = urlCandidate.match(/src=["']([^"']+)["']/);
+  if (match && match[1]) {
+    urlCandidate = match[1];
+  }
+
+  try {
+    const parsed = new URL(urlCandidate);
+    const validHost = parsed.hostname === 'www.google.com' || 
+                      parsed.hostname === 'google.com' || 
+                      parsed.hostname === 'maps.google.com' ||
+                      parsed.hostname.endsWith('.google.com') ||
+                      parsed.hostname.endsWith('.google.co.id');
+    
+    if (parsed.protocol === 'https:' && validHost && parsed.pathname.includes('/maps/embed')) {
+      return parsed.href;
+    }
+  } catch (e) {}
+
+  return DEFAULT_MAP;
+};
+
+// Helper Validasi Link Sosial Media (Anti Open Redirect ke Phishing)
+const getSafeSocialUrl = (rawUrl, allowedDomains = [], defaultUrl = '#') => {
+  if (!rawUrl) return defaultUrl;
+  try {
+    const candidate = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+    const parsed = new URL(candidate);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      const isAllowed = allowedDomains.some(domain => 
+        parsed.hostname === domain || parsed.hostname.endsWith('.' + domain)
+      );
+      if (isAllowed) return parsed.href;
+    }
+  } catch (e) {}
+  return defaultUrl;
+};
+
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState('beranda');
   const [selectedDate, setSelectedDate] = useState(getTodayLocalStr());
