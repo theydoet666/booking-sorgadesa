@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Search, Filter, Check, X, 
-  DollarSign, Plus, RefreshCw, AlertCircle, Edit
+  DollarSign, Plus, RefreshCw, AlertCircle, Edit, ArrowUpDown
 } from 'lucide-react';
 import { db } from '../../utils/db';
 import GlassCard from '../../components/GlassCard';
@@ -13,20 +13,21 @@ export default function KelolaBooking() {
   const [courts, setCourts] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Filters
+  // Filters & Sorting
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('Semua');
   const [paymentFilter, setPaymentFilter] = useState('Semua');
   const [selectedDate, setSelectedDate] = useState('');
+  const [sortBy, setSortBy] = useState('terbaru');
 
   // Paginasi
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Reset halaman jika filter berubah
+  // Reset halaman jika filter atau pengurutan berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, paymentFilter, selectedDate]);
+  }, [search, statusFilter, paymentFilter, selectedDate, sortBy]);
 
   // New manual booking form modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -253,11 +254,11 @@ export default function KelolaBooking() {
     }
   };
 
-  // Filter Logic
+  // Filter & Sort Logic
   const filteredBookings = bookings.filter(b => {
-    const matchSearch = b.nama_pemesan.toLowerCase().includes(search.toLowerCase()) || 
-                        b.no_hp.includes(search) || 
-                        b.id_booking.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = (b.nama_pemesan || '').toLowerCase().includes(search.toLowerCase()) || 
+                        (b.no_hp || '').includes(search) || 
+                        (b.id_booking || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'Semua' || b.status_booking === statusFilter;
     const matchPayment = paymentFilter === 'Semua' || b.status_pembayaran === paymentFilter;
     const matchDate = !selectedDate || b.tanggal === selectedDate;
@@ -265,10 +266,58 @@ export default function KelolaBooking() {
     return matchSearch && matchStatus && matchPayment && matchDate;
   });
 
-  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    if (sortBy === 'terbaru') {
+      // 1. Sort by created_at timestamp if available
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
+      // Fallback: compare tanggal + jam_mulai DESC, then id_booking DESC
+      const dateA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+      const dateB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      return (b.id_booking || '').localeCompare(a.id_booking || '');
+    }
+
+    if (sortBy === 'terlama') {
+      if (a.created_at && b.created_at) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }
+      const dateA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+      const dateB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return (a.id_booking || '').localeCompare(b.id_booking || '');
+    }
+
+    if (sortBy === 'tanggal_asc') {
+      // Tanggal Main Terdekat
+      const dateA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+      const dateB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      return dateA.localeCompare(dateB);
+    }
+
+    if (sortBy === 'tanggal_desc') {
+      // Tanggal Main Terjauh / Terbaru
+      const dateA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+      const dateB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      return dateB.localeCompare(dateA);
+    }
+
+    if (sortBy === 'nama_asc') {
+      return (a.nama_pemesan || '').localeCompare(b.nama_pemesan || '');
+    }
+
+    if (sortBy === 'biaya_desc') {
+      return (b.total_harga || 0) - (a.total_harga || 0);
+    }
+
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedBookings.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentBookings = filteredBookings.slice(indexOfFirstItem, indexOfLastItem);
+  const currentBookings = sortedBookings.slice(indexOfFirstItem, indexOfLastItem);
 
   // Opsi jam
   const times = [];
@@ -308,8 +357,8 @@ export default function KelolaBooking() {
         </div>
       </div>
 
-      {/* Filter Options Widget */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-court-green/5 border border-court-green/10 rounded-2xl p-4">
+      {/* Filter & Sort Options Widget */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-court-green/5 border border-court-green/10 rounded-2xl p-4">
         {/* Search */}
         <div className="relative">
           <input
@@ -354,13 +403,30 @@ export default function KelolaBooking() {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="p-2 text-xs rounded-lg border border-net-charcoal/25 bg-shuttle-cream/40 focus:outline-none focus:border-rattan-gold font-mono"
         />
+
+        {/* Sort Setting Dropdown */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full p-2 pl-8 text-xs rounded-lg border border-court-green/40 bg-shuttle-cream/80 focus:outline-none focus:border-court-green font-sans font-medium text-court-green cursor-pointer"
+          >
+            <option value="terbaru">Urut: Booking Terbaru</option>
+            <option value="terlama">Urut: Booking Terlama</option>
+            <option value="tanggal_asc">Urut: Tanggal Main (Terdekat)</option>
+            <option value="tanggal_desc">Urut: Tanggal Main (Terjauh)</option>
+            <option value="nama_asc">Urut: Nama Pemesan (A-Z)</option>
+            <option value="biaya_desc">Urut: Biaya Sewa (Tertinggi)</option>
+          </select>
+          <ArrowUpDown size={14} className="absolute left-2.5 top-3 text-court-green" />
+        </div>
       </div>
 
       {/* Main Table */}
       <GlassCard lPost className="border border-net-charcoal/10 relative p-4">
         {loading ? (
           <p className="text-sm font-sans text-net-charcoal/60 py-10 text-center">Menarik database booking...</p>
-        ) : filteredBookings.length === 0 ? (
+        ) : sortedBookings.length === 0 ? (
           <p className="text-sm font-sans text-net-charcoal/60 py-10 text-center">Pemesanan tidak ditemukan.</p>
         ) : (
           <div className="overflow-x-auto custom-scrollbar">
@@ -481,7 +547,7 @@ export default function KelolaBooking() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-net-charcoal/10 pt-4 mt-4 text-xs font-sans">
             <span className="text-net-charcoal/60">
-              Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredBookings.length)} dari {filteredBookings.length} booking
+              Menampilkan {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedBookings.length)} dari {sortedBookings.length} booking
             </span>
             <div className="flex items-center gap-2">
               <button

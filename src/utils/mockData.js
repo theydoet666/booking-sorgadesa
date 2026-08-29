@@ -149,6 +149,7 @@ export const getOperationalHours = () => {
 
 // Mock bookings untuk hari ini
 export const getMockBookingsForToday = () => {
+  const now = Date.now();
   const todayStr = new Date().toISOString().split('T')[0];
   return [
     {
@@ -165,7 +166,8 @@ export const getMockBookingsForToday = () => {
       total_harga: 100000,
       nominal_dibayar: 100000,
       catatan: "",
-      dibuat_oleh: "Sistem"
+      dibuat_oleh: "Sistem",
+      created_at: new Date(now - 3600000 * 4).toISOString()
     },
     {
       id_booking: "BK-2026-0002",
@@ -181,7 +183,8 @@ export const getMockBookingsForToday = () => {
       total_harga: 100000,
       nominal_dibayar: 0,
       catatan: "Sewa raket 1",
-      dibuat_oleh: "Sistem"
+      dibuat_oleh: "Sistem",
+      created_at: new Date(now - 3600000 * 3).toISOString()
     },
     {
       id_booking: "BK-2026-0003",
@@ -197,7 +200,8 @@ export const getMockBookingsForToday = () => {
       total_harga: 90000,
       nominal_dibayar: 0,
       catatan: "Jadwal Rutin Member",
-      dibuat_oleh: "Sistem Trigger"
+      dibuat_oleh: "Sistem Trigger",
+      created_at: new Date(now - 3600000 * 2).toISOString()
     },
     {
       id_booking: "BK-2026-0004",
@@ -213,7 +217,8 @@ export const getMockBookingsForToday = () => {
       total_harga: 100000,
       nominal_dibayar: 100000,
       catatan: "",
-      dibuat_oleh: "Kasir Belega"
+      dibuat_oleh: "Kasir Belega",
+      created_at: new Date(now - 3600000 * 1).toISOString()
     }
   ];
 };

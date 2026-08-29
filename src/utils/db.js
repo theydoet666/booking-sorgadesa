@@ -153,15 +153,19 @@ export const db = {
   },
 
   async addBooking(booking) {
+    const bookingWithMeta = {
+      created_at: new Date().toISOString(),
+      ...booking
+    };
     if (isSupabaseConfigured()) {
-      const { data, error } = await supabase.from('booking').insert([booking]).select();
+      const { data, error } = await supabase.from('booking').insert([bookingWithMeta]).select();
       if (!error) return { success: true, data: data[0] };
       return { success: false, message: error.message };
     }
-    const all = JSON.parse(localStorage.getItem('sorga_bookings'));
-    all.push(booking);
+    const all = JSON.parse(localStorage.getItem('sorga_bookings')) || [];
+    all.push(bookingWithMeta);
     localStorage.setItem('sorga_bookings', JSON.stringify(all));
-    return { success: true, data: booking };
+    return { success: true, data: bookingWithMeta };
   },
 
   async addBookingsBatch(bookings) {
