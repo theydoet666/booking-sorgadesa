@@ -550,6 +550,9 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
 │       ├── mockData.js           # Sandbox mock dataset
 │       ├── reportExportHelper.js # Handler ekspor laporan PDF/Excel
 │       └── supabaseClient.js     # Supabase Client SDK Config
+├── .github/
+│   └── workflows/
+│       └── keep_supabase_alive.yml # Skrip GitHub Actions otomatisasi ping anti auto-pause 7 hari
 ├── vercel.json                   # HTTP Security Headers (nosniff, SAMEORIGIN, CSP baseline)
 └── supabase/
     └── migrations/               # SQL Security, Hardening & Optimization Migrations
@@ -560,7 +563,8 @@ FOR EACH ROW EXECUTE FUNCTION trigger_protect_profile_role();
         ├── 05_add_must_change_password.sql
         ├── 06_fix_privilege_escalation.sql
         ├── 07_performance_and_rls_optimization.sql
-        └── 08_tighten_activity_logs_rls.sql
+        ├── 08_tighten_activity_logs_rls.sql
+        └── 09_keep_alive_cron.sql
 ```
 
 ---

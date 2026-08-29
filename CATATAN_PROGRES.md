@@ -75,6 +75,15 @@
 
 ---
 
+### G. Otomatisasi Keep-Alive Supabase (Pencegahan Database Auto-Pause 7 Hari)
+1. **GitHub Actions Scheduled Workflow (`.github/workflows/keep_supabase_alive.yml`):**
+   - Skrip CI/CD otomatis berjalan di server GitHub setiap 2 hari sekali (cron: `0 2 */2 * *`).
+   - Mengirimkan request `curl` REST API Supabase ke `/rest/v1/pengaturan?select=key&limit=1` secara otomatis sehingga Supabase mencatatnya sebagai aktivitas aktif dan **database tidak akan pernah di-pause oleh Supabase**.
+2. **SQL Migration 09 (`supabase/migrations/09_keep_alive_cron.sql`):**
+   - Menambahkan fungsi database `keep_alive_ping()` dan penjadwalan `pg_cron` internal PostgreSQL jam 04:00 WITA.
+
+---
+
 ## 2. Rangkuman Pekerjaan Sebelumnya (27 Agustus 2026)
 
 ### A. Implementasi Logo & Favicon Resmi ("Pb. Sorga belega")
