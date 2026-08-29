@@ -1,0 +1,35 @@
+name: Keep Supabase Alive (Anti Auto-Pause)
+
+on:
+  schedule:
+    # Jalankan otomatis setiap 2 hari sekali pada jam 02:00 UTC (10:00 WITA)
+    - cron: '0 2 */2 * *'
+  workflow_dispatch: # Izinkan eksekusi manual dari tab Actions di GitHub UI
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          SUPABASE_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          
+          if [ -z "$SUPABASE_URL" ]; then
+            SUPABASE_URL="https://eylyvnhosnhhngnltzll.supabase.co"
+          fi
+          
+          echo "Sending automated keep-alive ping to Supabase REST API: $SUPABASE_URL"
+          
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/pengaturan?select=key&limit=1")
+            
+          echo "Supabase Response HTTP Code: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 206 ]; then
+            echo "✅ Supabase Keep-Alive Successful! Activity registered."
+          else
+            echo "⚠️ Ping received HTTP status $HTTP_STATUS."
+          fi
