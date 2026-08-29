@@ -14,6 +14,8 @@ export const MOCK_SETTINGS = {
   nama_bank: "MANDIRI",
   nomor_rekening: "145-00-1234567-8",
   atas_nama_rekening: "Sorga Desa Belega",
+  qris_image_url: "",
+  qris_merchant_name: "Sorga Desa Belega",
   
   // Teks Landing Page
   hero_badge: "Gedung Olahraga Premium",

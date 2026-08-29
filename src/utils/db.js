@@ -479,6 +479,59 @@ export const db = {
     }
   },
 
+  async uploadQrisImage(fileOrBase64, isFile = false) {
+    if (isFile) {
+      const validation = this.validateImageFile(fileOrBase64);
+      if (!validation.valid) {
+        return { success: false, message: validation.message };
+      }
+    }
+
+    if (isSupabaseConfigured() && isFile) {
+      try {
+        const fileExt = fileOrBase64.name.split('.').pop();
+        const fileName = `qris-${Date.now()}.${fileExt}`;
+        const filePath = `branding/${fileName}`;
+
+        // 1. Upload to Supabase Storage bucket 'assets'
+        const { error: uploadError } = await supabase.storage
+          .from('assets')
+          .upload(filePath, fileOrBase64, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // 2. Get Public URL
+        const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+        const publicUrl = data.publicUrl;
+
+        // 3. Save to database pengaturan
+        await this.saveSettings({ qris_image_url: publicUrl });
+        return { success: true, qrisUrl: publicUrl };
+      } catch (err) {
+        console.error("Gagal upload barcode QRIS ke Supabase storage:", err);
+        return { success: false, message: err.message };
+      }
+    }
+
+    // Fallback/Local Base64 storage
+    try {
+      let base64Data = fileOrBase64;
+      if (isFile) {
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(fileOrBase64);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+        });
+      }
+
+      await this.saveSettings({ qris_image_url: base64Data });
+      return { success: true, qrisUrl: base64Data };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  },
+
   // === LOG AKTIVITAS (AUDIT TRAIL) ===
   async addActivityLog(user, action, detail) {
     const localTimestamp = new Date().toISOString();

@@ -36,29 +36,90 @@ export default function DashboardLayout() {
 
   // Enforce session check & server-side token validation
   useEffect(() => {
+    let isMounted = true;
+
     const verifySession = async () => {
       const sessionStr = sessionStorage.getItem('sorga_session');
       if (!sessionStr) {
-        navigate('/login');
+        if (isMounted) navigate('/login');
         return;
       }
 
-      // If connected to live Supabase, verify JWT token with Supabase Auth server
-      if (isSupabaseConfigured()) {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error || !user) {
-          sessionStorage.removeItem('sorga_session');
-          await supabase.auth.signOut();
-          navigate('/login');
-          return;
-        }
+      let parsedSession = null;
+      try {
+        parsedSession = JSON.parse(sessionStr);
+      } catch (e) {
+        sessionStorage.removeItem('sorga_session');
+        if (isMounted) navigate('/login');
+        return;
       }
 
-      const parsed = JSON.parse(sessionStr);
-      setUserSession(parsed);
+      if (isMounted) {
+        setUserSession(parsedSession);
+      }
+
+      // If connected to live Supabase, verify JWT token with resilience against temporary network glitches
+      if (isSupabaseConfigured()) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          
+          if (!sessionData?.session) {
+            const { data: userData, error } = await supabase.auth.getUser();
+            if (error) {
+              const isNetworkError = 
+                error.message?.includes('Failed to fetch') || 
+                error.name === 'AuthRetryableFetchError' || 
+                error.status === 503 || 
+                error.status === 504;
+              
+              // Only eject session if it is a definitive authentication failure (e.g. 401 or invalid token)
+              if (!isNetworkError && (error.status === 401 || error.message?.includes('invalid_grant') || error.message?.includes('JWT'))) {
+                sessionStorage.removeItem('sorga_session');
+                await supabase.auth.signOut().catch(() => {});
+                if (isMounted) navigate('/login');
+                return;
+              }
+            } else if (!userData?.user) {
+              sessionStorage.removeItem('sorga_session');
+              await supabase.auth.signOut().catch(() => {});
+              if (isMounted) navigate('/login');
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("Session verification network warning:", err);
+          // Keep active local session during temporary network hiccups to prevent accidental forced logout
+        }
+      }
     };
 
     verifySession();
+
+    // Listen to Supabase auth events cleanly
+    let authListener = null;
+    if (isSupabaseConfigured()) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+          sessionStorage.removeItem('sorga_session');
+          if (isMounted) navigate('/login');
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          const currentStr = sessionStorage.getItem('sorga_session');
+          if (currentStr) {
+            try {
+              const current = JSON.parse(currentStr);
+              current.token = session.access_token;
+              sessionStorage.setItem('sorga_session', JSON.stringify(current));
+            } catch (e) {}
+          }
+        }
+      });
+      authListener = subscription;
+    }
+
+    return () => {
+      isMounted = false;
+      if (authListener) authListener.unsubscribe();
+    };
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -101,8 +162,8 @@ export default function DashboardLayout() {
     <div className="min-h-screen flex flex-col md:flex-row bg-shuttle-cream text-net-charcoal font-sans">
       
       {/* 1. Mobile Header */}
-      <header className="md:hidden flex items-center justify-between h-16 px-4 bg-court-green text-shuttle-cream border-b border-chalk-line/10 sticky top-0 z-30 shadow">
-        <div className="flex items-center gap-2 text-left">
+      <header className="md:hidden flex items-center justify-between h-16 px-3 sm:px-4 bg-court-green text-shuttle-cream border-b border-chalk-line/10 sticky top-0 z-30 shadow w-full max-w-full overflow-hidden">
+        <div className="flex items-center gap-2 text-left min-w-0">
           <div className="w-8 h-8 rounded-lg bg-shuttle-cream/10 border border-rattan-gold/30 flex items-center justify-center overflow-hidden shrink-0">
             <img 
               src={logoUrl} 
@@ -110,28 +171,28 @@ export default function DashboardLayout() {
               className="w-full h-full object-cover" 
             />
           </div>
-          <div className="flex flex-col">
-            <span className="font-fraunces italic font-semibold text-[9px] leading-tight text-rattan-gold">Sorga</span>
-            <span className="font-sans font-bold text-xs tracking-wider text-shuttle-cream uppercase leading-none mt-0.5">Desa Belega</span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-fraunces italic font-semibold text-[9px] leading-tight text-rattan-gold truncate">Sorga</span>
+            <span className="font-sans font-bold text-xs tracking-wider text-shuttle-cream uppercase leading-none mt-0.5 truncate">Desa Belega</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => setIsChangePasswordOpen(true)}
             title="Ubah Kata Sandi"
-            className="p-1.5 bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal text-shuttle-cream rounded-lg transition-all cursor-pointer"
+            className="p-1.5 bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal text-shuttle-cream rounded-lg transition-all cursor-pointer shrink-0"
           >
             <KeyRound size={16} />
           </button>
 
-          <div className="flex items-center gap-1.5 bg-chalk-line/10 py-1 px-2.5 rounded-lg border border-chalk-line/15 text-[10px] font-sans font-bold uppercase text-smash-lime">
-            <UserCheck size={12} />
-            <span>{userSession.user.role}</span>
+          <div className="flex items-center gap-1 bg-chalk-line/10 py-1 px-2 rounded-lg border border-chalk-line/15 text-[10px] font-sans font-bold uppercase text-smash-lime shrink-0">
+            <UserCheck size={12} className="shrink-0" />
+            <span className="max-w-[70px] sm:max-w-none truncate">{userSession.user.role}</span>
           </div>
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1 text-shuttle-cream hover:text-smash-lime cursor-pointer"
+            className="p-1 text-shuttle-cream hover:text-smash-lime cursor-pointer shrink-0"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -239,27 +300,27 @@ export default function DashboardLayout() {
       )}
 
       {/* 3. Main Content Panel */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 min-h-[calc(100vh-4rem)] md:min-h-screen overflow-y-auto w-full max-w-6xl mx-auto flex flex-col text-left">
+      <main className="flex-1 p-3.5 sm:p-6 md:p-8 min-h-[calc(100vh-4rem)] md:min-h-screen overflow-y-auto overflow-x-hidden w-full max-w-6xl mx-auto flex flex-col text-left">
         
         {/* Temporary Password Security Notification Banner */}
         {userSession?.user?.must_change_password && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-net-charcoal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-fadeIn">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow">
-                <AlertTriangle size={20} />
+          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-net-charcoal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-fadeIn w-full overflow-hidden">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow">
+                <AlertTriangle size={18} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h4 className="font-bold text-xs uppercase tracking-wider text-amber-900 font-sans">
                   Pemberitahuan Keamanan: Kata Sandi Sementara
                 </h4>
-                <p className="text-xs text-amber-900/80 mt-0.5 font-sans leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-amber-900/80 mt-0.5 font-sans leading-relaxed">
                   Anda saat ini masih menggunakan kata sandi sementara. Demi keamanan data transaksi dan hak akses akun Anda, harap segera ubah kata sandi.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsChangePasswordOpen(true)}
-              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-sans font-bold text-xs uppercase tracking-wider rounded-xl shadow transition-all shrink-0 cursor-pointer flex items-center gap-2"
+              className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-sans font-bold text-xs uppercase tracking-wider rounded-xl shadow transition-all shrink-0 cursor-pointer flex items-center justify-center gap-2"
             >
               <KeyRound size={15} />
               Ubah Sekarang

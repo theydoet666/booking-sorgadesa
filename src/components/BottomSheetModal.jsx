@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, Phone, Clipboard, AlertCircle } from 'lucide-react';
+import { X, Calendar, User, Phone, Clipboard, AlertCircle, QrCode, CreditCard, Download, Image } from 'lucide-react';
 import GlassCard from './GlassCard';
 import { showAlert } from '../utils/alertHelper';
 import { getTodayLocalStr, isValidTimeFormat, calculateDurationHours } from '../utils/dateHelper';
@@ -22,6 +22,7 @@ export default function BottomSheetModal({
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [totalPrice, setTotalPrice] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('transfer');
 
   // Sync initial props when modal opens
   useEffect(() => {
@@ -58,6 +59,69 @@ export default function BottomSheetModal({
       setTotalPrice(0);
     }
   }, [courtId, startTime, endTime, courts]);
+
+  const handleDownloadQris = async () => {
+    try {
+      const qrisUrl = settings.qris_image_url;
+      
+      if (qrisUrl) {
+        if (qrisUrl.startsWith('data:') || qrisUrl.startsWith('blob:')) {
+          const a = document.createElement('a');
+          a.href = qrisUrl;
+          a.download = 'QRIS-Sorga-Desa-Belega.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          showAlert.success("Berhasil Disimpan", "Gambar barcode QRIS telah diunduh.");
+          return;
+        }
+
+        const response = await fetch(qrisUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = 'QRIS-Sorga-Desa-Belega.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+        showAlert.success("Berhasil Disimpan", "Gambar barcode QRIS telah diunduh ke galeri perangkat Anda.");
+      } else {
+        const svgElement = document.getElementById('qris-fallback-svg');
+        if (svgElement) {
+          const svgData = new XMLSerializer().serializeToString(svgElement);
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+          const URLObj = window.URL || window.webkitURL || window;
+          const blobURL = URLObj.createObjectURL(svgBlob);
+          const image = new Image();
+          image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 400;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, 400, 400);
+            context.drawImage(image, 50, 50, 300, 300);
+            const pngUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = pngUrl;
+            downloadLink.download = 'QRIS-Sorga-Desa-Belega.png';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            showAlert.success("Berhasil Disimpan", "Gambar barcode QRIS telah diunduh.");
+          };
+          image.src = blobURL;
+        }
+      }
+    } catch (err) {
+      console.warn("Download QRIS error:", err);
+      if (settings.qris_image_url) {
+        window.open(settings.qris_image_url, '_blank');
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -280,46 +344,144 @@ export default function BottomSheetModal({
             {/* Informasi Pembayaran & Biaya */}
             <div className="bg-court-green/10 border border-court-green/20 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-net-charcoal font-sans">
-                <span className="font-bold">Total Biaya Sewa:</span>
-                <span className="font-mono text-base font-bold text-court-green">
+                <span className="font-bold text-xs uppercase tracking-wider">Total Biaya Sewa:</span>
+                <span className="font-mono text-lg font-bold text-court-green">
                   Rp {totalPrice.toLocaleString('id-ID')}
                 </span>
               </div>
               
-              <div className="border-t border-court-green/25 pt-2.5 space-y-1.5 text-xs text-net-charcoal/80">
-                <div className="flex items-start gap-1">
-                  <AlertCircle size={14} className="text-rattan-gold mt-0.5 shrink-0" />
-                  <span><strong>Instruksi Transfer:</strong> Transfer biaya sewa ke rekening berikut:</span>
-                </div>
-                <div className="flex justify-between items-center bg-shuttle-cream/60 p-2.5 rounded-lg border border-net-charcoal/10 font-mono text-[11px] mt-1 select-all">
-                  <div>
-                    <span className="font-sans font-extrabold text-court-green uppercase tracking-wider block text-xs">
-                      {settings.nama_bank || 'MANDIRI'}
-                    </span>
-                    <span className="font-mono font-bold text-net-charcoal text-xs">
-                      {settings.nomor_rekening || '145-00-1234567-8'}
-                    </span>
-                    <span className="text-[10px] text-net-charcoal/70 block font-sans">
-                      a.n {settings.atas_nama_rekening || 'Sorga Desa Belega'}
-                    </span>
-                  </div>
-                  <button 
+              <div className="border-t border-court-green/25 pt-3 space-y-3 text-xs text-net-charcoal/80">
+                
+                {/* Switcher Metode Pembayaran */}
+                <div className="flex rounded-xl bg-shuttle-cream/70 p-1 border border-net-charcoal/10 font-sans text-xs font-bold uppercase tracking-wider">
+                  <button
                     type="button"
-                    onClick={() => {
-                      const rawNumber = settings.nomor_rekening || '145-00-1234567-8';
-                      const cleanNumber = rawNumber.replace(/\s/g, '');
-                      navigator.clipboard.writeText(cleanNumber);
-                      showAlert.success("Berhasil Disalin", `Nomor rekening ${settings.nama_bank || 'Mandiri'} (${cleanNumber}) berhasil disalin ke papan klip.`);
-                    }}
-                    className="flex items-center gap-1 py-1.5 px-2.5 bg-court-green/10 hover:bg-court-green hover:text-shuttle-cream text-court-green rounded-lg text-[10px] font-sans font-bold transition-all cursor-pointer border border-court-green/20 shrink-0"
-                    title="Salin Nomor Rekening"
+                    onClick={() => setPaymentMethod('transfer')}
+                    className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-[11px] ${
+                      paymentMethod === 'transfer' 
+                        ? 'bg-court-green text-shuttle-cream shadow-md font-extrabold' 
+                        : 'text-net-charcoal/70 hover:text-net-charcoal'
+                    }`}
                   >
-                    <Clipboard size={13} />
-                    <span>Salin</span>
+                    <CreditCard size={14} />
+                    <span>Transfer Bank</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('qris')}
+                    className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-[11px] ${
+                      paymentMethod === 'qris' 
+                        ? 'bg-court-green text-shuttle-cream shadow-md font-extrabold' 
+                        : 'text-net-charcoal/70 hover:text-net-charcoal'
+                    }`}
+                  >
+                    <QrCode size={14} />
+                    <span>QRIS Barcode</span>
                   </button>
                 </div>
-                <p className="text-[10px] leading-relaxed text-net-charcoal/75 italic">
-                  * Setelah melakukan pemesanan, silakan kirim screenshot bukti transfer ke nomor WhatsApp Admin agar pesanan Anda dikonfirmasi.
+
+                {/* TAB 1: TRANSFER BANK */}
+                {paymentMethod === 'transfer' && (
+                  <div className="space-y-2 animate-fadeIn">
+                    <div className="flex items-start gap-1">
+                      <AlertCircle size={14} className="text-rattan-gold mt-0.5 shrink-0" />
+                      <span><strong>Instruksi Transfer:</strong> Transfer biaya sewa ke rekening berikut:</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-shuttle-cream/80 p-3 rounded-xl border border-net-charcoal/10 font-mono text-[11px] select-all shadow-xs">
+                      <div>
+                        <span className="font-sans font-extrabold text-court-green uppercase tracking-wider block text-xs">
+                          {settings.nama_bank || 'MANDIRI'}
+                        </span>
+                        <span className="font-mono font-bold text-net-charcoal text-sm">
+                          {settings.nomor_rekening || '145-00-1234567-8'}
+                        </span>
+                        <span className="text-[10px] text-net-charcoal/70 block font-sans mt-0.5">
+                          a.n {settings.atas_nama_rekening || 'Sorga Desa Belega'}
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const rawNumber = settings.nomor_rekening || '145-00-1234567-8';
+                          const cleanNumber = rawNumber.replace(/\s/g, '');
+                          navigator.clipboard.writeText(cleanNumber);
+                          showAlert.success("Berhasil Disalin", `Nomor rekening ${settings.nama_bank || 'Mandiri'} (${cleanNumber}) berhasil disalin ke papan klip.`);
+                        }}
+                        className="flex items-center gap-1 py-1.5 px-3 bg-court-green/10 hover:bg-court-green hover:text-shuttle-cream text-court-green rounded-lg text-[10px] font-sans font-bold transition-all cursor-pointer border border-court-green/20 shrink-0 shadow-xs"
+                        title="Salin Nomor Rekening"
+                      >
+                        <Clipboard size={13} />
+                        <span>Salin</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: QRIS BARCODE */}
+                {paymentMethod === 'qris' && (
+                  <div className="space-y-3 animate-fadeIn text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-net-charcoal font-sans font-bold">
+                      <QrCode size={15} className="text-court-green" />
+                      <span>Scan Barcode QRIS Resmi</span>
+                    </div>
+
+                    <div className="bg-white p-3.5 rounded-2xl border border-rattan-gold/30 shadow-md inline-block mx-auto space-y-2.5 max-w-[240px]">
+                      {/* Logo Header QRIS */}
+                      <div className="flex items-center justify-between border-b border-net-charcoal/10 pb-1.5">
+                        <span className="font-sans font-extrabold text-[10px] tracking-widest text-red-600 uppercase">QRIS</span>
+                        <span className="font-sans font-bold text-[8px] text-net-charcoal/60 uppercase">GPN / ALL PAYMENT</span>
+                      </div>
+
+                      {/* Barcode Image */}
+                      <div className="w-48 h-48 bg-white mx-auto flex items-center justify-center overflow-hidden relative border border-net-charcoal/10 rounded-lg p-1">
+                        {settings.qris_image_url ? (
+                          <img 
+                            src={settings.qris_image_url} 
+                            alt="QRIS Barcode" 
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          // Fallback Vector QRIS Barcode
+                          <div className="w-full h-full bg-slate-50 flex flex-col items-center justify-center p-2 text-center space-y-2">
+                            <svg className="w-36 h-36 text-net-charcoal" viewBox="0 0 100 100" fill="currentColor">
+                              <path d="M10 10h30v30H10zM15 15v20h20V15zM20 20h10v10H20zM60 10h30v30H60zM65 15v20h20V15zM70 20h10v10H70zM10 60h30v30H10zM15 65v20h20V65zM20 70h10v10H20zM45 10h10v10H45zM45 30h10v20H45zM55 45h10v10H55zM60 60h10v10H60zM75 60h15v10H75zM45 65h10v25H45zM60 75h15v15H60zM80 80h10v10H80z" />
+                            </svg>
+                            <span className="text-[8px] font-sans font-bold text-net-charcoal/50">Buka Pengaturan Sistem untuk unggah foto QRIS asli</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Merchant Name */}
+                      <div className="border-t border-net-charcoal/10 pt-1.5">
+                        <span className="font-sans font-extrabold text-[11px] text-net-charcoal block leading-tight truncate">
+                          {settings.qris_merchant_name || 'Sorga Desa Belega'}
+                        </span>
+                        <span className="font-mono text-[8px] text-net-charcoal/60 block mt-0.5">
+                          NMID: {settings.qris_merchant_name ? settings.qris_merchant_name.replace(/[^0-9]/g, '') || 'ID1029384756' : 'ID1029384756'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tombol Unduh / Simpan QRIS */}
+                    <div>
+                      <button 
+                        type="button"
+                        onClick={handleDownloadQris}
+                        className="inline-flex items-center gap-1.5 py-2 px-4 bg-court-green text-shuttle-cream hover:bg-court-green/95 rounded-xl text-xs font-sans font-bold transition-all cursor-pointer shadow-md active:scale-95 border border-court-green/30"
+                      >
+                        <Download size={14} />
+                        <span>Unduh / Simpan Gambar QRIS</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] leading-relaxed text-net-charcoal/70 font-sans">
+                      Dapat di-scan dengan: <strong>GoPay, OVO, DANA, ShopeePay, LinkAja, BCA, Mandiri, BRI, BNI, Permata</strong>, dan seluruh aplikasi m-Banking/e-Wallet berlogo QRIS.
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-[10px] leading-relaxed text-net-charcoal/75 italic border-t border-court-green/15 pt-2">
+                  * Setelah pembayaran selesai, kirim bukti screenshot transfer / bayar QRIS ke WhatsApp Admin agar status pesanan langsung dikonfirmasi.
                 </p>
               </div>
             </div>

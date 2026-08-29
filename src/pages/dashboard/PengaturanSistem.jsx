@@ -21,6 +21,8 @@ export default function PengaturanSistem() {
     nama_bank: 'MANDIRI',
     nomor_rekening: '145-00-1234567-8',
     atas_nama_rekening: 'Sorga Desa Belega',
+    qris_image_url: '',
+    qris_merchant_name: 'Sorga Desa Belega',
     hero_badge: '',
     hero_title: '',
     hero_sub_badge: '',
@@ -248,6 +250,31 @@ export default function PengaturanSistem() {
       db.addActivityLog(adminName, 'Unggah Logo Baru', 'Memperbarui logo branding dan favicon sistem');
     } else {
       showAlert.error("Gagal", res.message || "Gagal mengunggah logo.");
+    }
+    setLoading(false);
+  };
+
+  // Upload Barcode QRIS Baru
+  const handleQrisUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showAlert.warning("Foto QRIS Terlalu Besar", "Ukuran berkas gambar barcode QRIS tidak boleh melebihi 2MB!");
+      return;
+    }
+
+    setLoading(true);
+    const res = await db.uploadQrisImage(file, true);
+    if (res.success) {
+      setSettingsForm(prev => ({ ...prev, qris_image_url: res.qrisUrl }));
+      showAlert.success("Barcode QRIS Diperbarui", "Gambar barcode QRIS berhasil diunggah!");
+      
+      const sessionStr = sessionStorage.getItem('sorga_session');
+      const adminName = sessionStr ? JSON.parse(sessionStr).user.nama : 'Admin';
+      db.addActivityLog(adminName, 'Unggah Barcode QRIS', 'Memperbarui gambar barcode QRIS pembayaran');
+    } else {
+      showAlert.error("Gagal", res.message || "Gagal mengunggah barcode QRIS.");
     }
     setLoading(false);
   };
@@ -736,25 +763,25 @@ export default function PengaturanSistem() {
     <div className="space-y-6 text-net-charcoal">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h2 className="font-fraunces font-bold text-2xl sm:text-3xl text-net-charcoal">Pengaturan Sistem</h2>
-          <p className="text-xs font-sans text-net-charcoal/60 uppercase tracking-wider mt-0.5">Konfigurasi Profil, Ketersediaan Lapangan, & Hak Akses</p>
+          <h2 className="font-fraunces font-bold text-xl sm:text-3xl text-net-charcoal">Pengaturan Sistem</h2>
+          <p className="text-[11px] sm:text-xs font-sans text-net-charcoal/60 uppercase tracking-wider mt-0.5">Konfigurasi Profil, Ketersediaan Lapangan, & Hak Akses</p>
         </div>
         <button 
           onClick={loadSettingsData}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 bg-court-green/10 text-court-green hover:bg-court-green/20 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-court-green/15"
+          className="flex items-center justify-center gap-2 py-2 px-3.5 sm:py-2.5 sm:px-4 bg-court-green/10 text-court-green hover:bg-court-green/20 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-court-green/15 self-start sm:self-auto shrink-0"
         >
           <RefreshCw size={14} />
           Segarkan
         </button>
       </div>
 
-      {/* Sub Tabs */}
-      <div className="flex border-b border-rattan-gold/25 font-sans text-xs font-bold uppercase tracking-wider">
+      {/* Sub Tabs - Scrollable horizontal pada mobile tanpa merusak layout */}
+      <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none border-b border-rattan-gold/25 font-sans text-xs font-bold uppercase tracking-wider max-w-full pb-0.5">
         <button
           onClick={() => setActiveSubTab('umum')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'umum' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -762,7 +789,7 @@ export default function PengaturanSistem() {
         </button>
         <button
           onClick={() => setActiveSubTab('lapangan')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'lapangan' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -770,7 +797,7 @@ export default function PengaturanSistem() {
         </button>
         <button
           onClick={() => setActiveSubTab('staf')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'staf' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -778,7 +805,7 @@ export default function PengaturanSistem() {
         </button>
         <button
           onClick={() => setActiveSubTab('galeri')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'galeri' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -786,7 +813,7 @@ export default function PengaturanSistem() {
         </button>
         <button
           onClick={() => setActiveSubTab('testimoni')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'testimoni' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -794,7 +821,7 @@ export default function PengaturanSistem() {
         </button>
         <button
           onClick={() => setActiveSubTab('konten')}
-          className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer ${
+          className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer shrink-0 ${
             activeSubTab === 'konten' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
           }`}
         >
@@ -806,7 +833,7 @@ export default function PengaturanSistem() {
               setActiveSubTab('log');
               loadActivityLogs();
             }}
-            className={`py-2.5 px-5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`py-2.5 px-3.5 sm:px-5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeSubTab === 'log' ? 'border-court-green text-court-green font-extrabold' : 'border-transparent text-net-charcoal/50 hover:text-net-charcoal'
             }`}
           >
@@ -818,15 +845,15 @@ export default function PengaturanSistem() {
 
       {/* 1. TAB UMUM */}
       {activeSubTab === 'umum' && (
-        <GlassCard lPost className="border border-net-charcoal/10 relative p-6">
+        <GlassCard lPost className="border border-net-charcoal/10 relative p-4 sm:p-6">
           <form onSubmit={handleSaveGeneralSettings} className="space-y-4 text-xs text-left">
-            <h3 className="font-fraunces font-bold text-lg text-net-charcoal border-b border-rattan-gold/15 pb-2.5 mb-4 flex items-center gap-2">
+            <h3 className="font-fraunces font-bold text-base sm:text-lg text-net-charcoal border-b border-rattan-gold/15 pb-2.5 mb-4 flex items-center gap-2">
               <Settings size={16} />
               Pengaturan Profil Bisnis
             </h3>
 
             {/* Logo Upload Section */}
-            <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-court-green/5 border border-court-green/10 rounded-2xl mb-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 p-3.5 sm:p-4 bg-court-green/5 border border-court-green/10 rounded-2xl mb-6">
               <div className="w-20 h-20 rounded-2xl bg-court-green/10 border border-rattan-gold/30 flex items-center justify-center overflow-hidden shrink-0">
                 <img 
                   src={settingsForm.logo_url || DEFAULT_LOGO} 
@@ -834,12 +861,12 @@ export default function PengaturanSistem() {
                   className="w-full h-full object-cover" 
                 />
               </div>
-              <div className="text-left space-y-2 flex-1">
+              <div className="text-center sm:text-left space-y-2 flex-1 min-w-0">
                 <h4 className="font-bold text-net-charcoal font-sans text-xs uppercase tracking-wider">Logo Brand & Favicon</h4>
                 <p className="text-[10px] text-net-charcoal/60 leading-relaxed font-sans">
                   Unggah file gambar logo pengelola (Rekomendasi rasio 1:1, format PNG/JPG/SVG/WebP, maks. 1MB). Logo ini akan dipasang secara real-time di seluruh portal sistem.
                 </p>
-                <div className="relative inline-block">
+                <div className="relative inline-block pt-1">
                   <input
                     type="file"
                     accept="image/*"
@@ -849,7 +876,7 @@ export default function PengaturanSistem() {
                   />
                   <label
                     htmlFor="logo-upload-input"
-                    className="inline-flex items-center gap-2 py-2.5 px-4 bg-court-green text-shuttle-cream font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg shadow hover:bg-court-green/95 transition-all cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 py-2 px-3.5 bg-court-green text-shuttle-cream font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg shadow hover:bg-court-green/95 transition-all cursor-pointer"
                   >
                     <Upload size={12} />
                     Pilih Berkas Logo
@@ -949,7 +976,7 @@ export default function PengaturanSistem() {
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: MANDIRI, BCA, BRI, QRIS"
+                    placeholder="Contoh: MANDIRI, BCA, BRI"
                     value={settingsForm.nama_bank || ''}
                     onChange={(e) => setSettingsForm(prev => ({ ...prev, nama_bank: e.target.value }))}
                     className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 uppercase font-sans font-bold"
@@ -978,6 +1005,83 @@ export default function PengaturanSistem() {
                     onChange={(e) => setSettingsForm(prev => ({ ...prev, atas_nama_rekening: e.target.value }))}
                     className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 font-sans font-medium"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Informasi Barcode QRIS Pembayaran */}
+            <div className="pt-4 border-t border-rattan-gold/15 space-y-4">
+              <div>
+                <h4 className="font-fraunces font-bold text-sm text-net-charcoal flex items-center gap-2">
+                  Informasi Barcode QRIS Pembayaran
+                </h4>
+                <p className="text-[10px] text-net-charcoal/60 leading-relaxed font-sans mt-0.5">
+                  Unggah gambar barcode QRIS resmi dan beri nama Merchant/NMID. Barcode ini akan dimuat di modal booking pelanggan sehingga pelanggan dapat langsung men-scan atau mengunduhnya.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-bold text-net-charcoal/70 uppercase mb-1">Nama Merchant / NMID QRIS *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Sorga Desa Belega (NMID: ID1029384756)"
+                      value={settingsForm.qris_merchant_name || ''}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, qris_merchant_name: e.target.value }))}
+                      className="w-full p-2.5 rounded-lg border border-net-charcoal/20 bg-shuttle-cream/40 font-sans font-medium text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] font-bold text-net-charcoal/70 block uppercase mb-1">Unggah Berkas Gambar Barcode QRIS:</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-2 py-2 px-3.5 bg-court-green text-shuttle-cream font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg shadow hover:bg-court-green/95 transition-all cursor-pointer">
+                        <Upload size={13} />
+                        Pilih Gambar QRIS
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleQrisUpload}
+                          className="hidden"
+                          disabled={loading}
+                        />
+                      </label>
+                      {settingsForm.qris_image_url && (
+                        <button
+                          type="button"
+                          onClick={() => setSettingsForm(prev => ({ ...prev, qris_image_url: '' }))}
+                          className="py-2 px-3 bg-status-danger/10 text-status-danger hover:bg-status-danger/20 rounded-lg text-[10px] font-sans font-bold uppercase transition-all cursor-pointer"
+                        >
+                          Hapus Gambar Barcode
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-net-charcoal/50 block mt-1">Format PNG, JPG, WebP, atau SVG. Maksimal 2MB.</span>
+                  </div>
+                </div>
+
+                {/* Pratinjau QRIS Barcode */}
+                <div className="p-3.5 bg-court-green/5 border border-rattan-gold/30 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
+                  <span className="text-[10px] font-bold text-court-green uppercase tracking-wider">Pratinjau QRIS Modal Booking</span>
+                  {settingsForm.qris_image_url ? (
+                    <div className="w-36 h-36 bg-white p-2 rounded-xl border border-net-charcoal/20 shadow-md flex items-center justify-center overflow-hidden">
+                      <img
+                        src={settingsForm.qris_image_url}
+                        alt="Pratinjau QRIS"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-36 h-36 bg-white/70 p-3 rounded-xl border border-dashed border-net-charcoal/30 flex flex-col items-center justify-center text-center space-y-1">
+                      <Image size={24} className="text-net-charcoal/40" />
+                      <span className="text-[9px] text-net-charcoal/60 font-medium leading-tight">Belum ada barcode QRIS diunggah</span>
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-net-charcoal font-sans">
+                    {settingsForm.qris_merchant_name || 'Sorga Desa Belega'}
+                  </span>
                 </div>
               </div>
             </div>

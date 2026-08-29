@@ -64,24 +64,31 @@ export default function LoginAdmin() {
     }
 
     try {
-      // Supabase Auth Integration: Coba domain utama (@sorgadesa.belega.id) lalu fallback ke (@sorgadesa.com)
       const cleanUsername = username.trim().toLowerCase();
-      let email = cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@sorgadesa.belega.id`;
-      
-      let authRes = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+      let authRes;
 
-      // Jika gagal dan login tanpa tanda '@', otomatis coba fallback ke domain lama (@sorgadesa.com)
-      if (authRes.error && !cleanUsername.includes('@')) {
-        const fallbackEmail = `${cleanUsername}@sorgadesa.com`;
-        const retryRes = await supabase.auth.signInWithPassword({
-          email: fallbackEmail,
+      if (cleanUsername.includes('@')) {
+        authRes = await supabase.auth.signInWithPassword({
+          email: cleanUsername,
           password: password,
         });
-        if (!retryRes.error) {
-          authRes = retryRes;
+      } else {
+        const primaryEmail = `${cleanUsername}@sorgadesa.belega.id`;
+        authRes = await supabase.auth.signInWithPassword({
+          email: primaryEmail,
+          password: password,
+        });
+
+        // Hanya coba domain fallback jika error berupa kredensial salah
+        if (authRes.error && authRes.error.message && authRes.error.message.toLowerCase().includes('invalid login credentials')) {
+          const fallbackEmail = `${cleanUsername}@sorgadesa.com`;
+          const fallbackRes = await supabase.auth.signInWithPassword({
+            email: fallbackEmail,
+            password: password,
+          });
+          if (!fallbackRes.error) {
+            authRes = fallbackRes;
+          }
         }
       }
 
@@ -114,7 +121,9 @@ export default function LoginAdmin() {
         }
       }));
 
-      db.addActivityLog(profile.nama, 'Login Admin', 'Berhasil masuk ke dashboard Supabase');
+      // Non-blocking log aktivitas agar redirect terasa instan
+      db.addActivityLog(profile.nama, 'Login Admin', 'Berhasil masuk ke dashboard Supabase').catch(() => {});
+      
       setLoading(false);
       navigate('/admin');
 
