@@ -158,10 +158,30 @@ export default function BottomSheetModal({
     return ends;
   };
 
+  const sanitizeText = (str = '') => {
+    return String(str)
+      .replace(/[<>'"`]/g, '')
+      .trim();
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!courtId || !date || !startTime || !endTime || !name || !phone) {
+    const cleanName = sanitizeText(name).substring(0, 100);
+    const cleanPhone = phone.trim().replace(/[^0-9+]/g, '');
+    const cleanNotes = sanitizeText(notes).substring(0, 500);
+
+    if (!courtId || !date || !startTime || !endTime || !cleanName || !cleanPhone) {
       showAlert.warning("Kolom Belum Lengkap", "Harap isi semua kolom wajib pemesanan!");
+      return;
+    }
+
+    if (cleanName.length < 2) {
+      showAlert.warning("Nama Tidak Valid", "Nama pemesan minimal 2 karakter.");
+      return;
+    }
+
+    if (cleanPhone.length < 9 || cleanPhone.length > 15) {
+      showAlert.warning("Nomor WhatsApp Tidak Valid", "Harap masukkan nomor WhatsApp yang valid (9 - 15 digit angka).");
       return;
     }
 
@@ -184,9 +204,9 @@ export default function BottomSheetModal({
       tanggal: date,
       jam_mulai: startTime,
       jam_selesai: endTime,
-      nama_pemesan: name,
-      no_hp: phone,
-      catatan: notes,
+      nama_pemesan: cleanName,
+      no_hp: cleanPhone,
+      catatan: cleanNotes,
       total_harga: totalPrice,
       sumber_booking: 'Landing Page',
       status_booking: 'Pending',

@@ -632,13 +632,28 @@ export default function LandingPage() {
             
             {/* Social media icons */}
             <div className="flex items-center gap-3 pt-2">
-              <a href={settings.sosmed_instagram || "https://instagram.com/sorgadesabelega"} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0">
+              <a 
+                href={getSafeSocialUrl(settings.sosmed_instagram, ['instagram.com'], 'https://instagram.com/sorgadesabelega')} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0"
+              >
                 <Instagram size={18} />
               </a>
-              <a href={settings.sosmed_facebook || "https://facebook.com/sorgadesabelega"} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0">
+              <a 
+                href={getSafeSocialUrl(settings.sosmed_facebook, ['facebook.com'], 'https://facebook.com/sorgadesabelega')} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0"
+              >
                 <Facebook size={18} />
               </a>
-              <a href={settings.sosmed_google_maps || "https://maps.google.com/?q=Sorga+Desa+Belega"} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0">
+              <a 
+                href={getSafeSocialUrl(settings.sosmed_google_maps, ['google.com', 'maps.google.com', 'goo.gl'], 'https://maps.google.com/?q=Sorga+Desa+Belega')} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-9 h-9 rounded-lg flex items-center justify-center bg-chalk-line/10 hover:bg-smash-lime hover:text-net-charcoal transition-all text-shuttle-cream shrink-0"
+              >
                 <MapPin size={18} />
               </a>
             </div>
@@ -647,9 +662,9 @@ export default function LandingPage() {
           <div className="md:col-span-5 flex flex-col gap-3">
             {/* WhatsApp CTA */}
             <a 
-              href={`https://wa.me/${settings.nomor_wa_admin}`}
+              href={`https://wa.me/${String(settings.nomor_wa_admin || '').replace(/[^0-9]/g, '')}`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 py-4 px-6 bg-smash-lime text-net-charcoal font-sans font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg hover:bg-smash-lime/90 active:scale-98 transition-all text-center"
             >
               <Phone size={16} strokeWidth={2.5} />
@@ -660,11 +675,7 @@ export default function LandingPage() {
             <div className="rounded-xl overflow-hidden h-44 border border-chalk-line/10 relative shadow">
               <iframe 
                 title="Sorga Desa Belega Map"
-                src={
-                  (settings.google_maps_iframe && settings.google_maps_iframe.includes('google.com/maps/embed'))
-                    ? (settings.google_maps_iframe.match(/src=["']([^"']+)["']/) ? settings.google_maps_iframe.match(/src=["']([^"']+)["']/)[1] : settings.google_maps_iframe)
-                    : "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d1170.0072306116913!2d115.3106892!3d-8.5571817!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd2172940bd7bcf%3A0xd1d39209ea6f06c8!2sSorga%20Belega!5e1!3m2!1sen!2sid!4v1787796501037!5m2!1sen!2sid"
-                } 
+                src={getSafeGoogleMapsUrl(settings.google_maps_iframe)} 
                 width="100%" 
                 height="100%" 
                 style={{ border: 0 }} 

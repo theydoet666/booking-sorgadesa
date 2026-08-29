@@ -6,6 +6,9 @@ import { db } from '../utils/db';
 import GlassCard from '../components/GlassCard';
 import { DEFAULT_LOGO, updateFavicon } from '../utils/logoHelper';
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60000; // 60 detik
+
 export default function LoginAdmin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +16,12 @@ export default function LoginAdmin() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
+  const [loginAttempts, setLoginAttempts] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('sorga_login_attempts');
+      return stored ? JSON.parse(stored) : { count: 0, lockoutUntil: 0 };
+    } catch { return { count: 0, lockoutUntil: 0 }; }
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +43,15 @@ export default function LoginAdmin() {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
+
+    // Rate-limiting: Cek lockout
+    const now = Date.now();
+    if (loginAttempts.lockoutUntil > now) {
+      const remainingSec = Math.ceil((loginAttempts.lockoutUntil - now) / 1000);
+      setErrorMsg(`Terlalu banyak percobaan login gagal. Coba lagi dalam ${remainingSec} detik.`);
+      setLoading(false);
+      return;
+    }
 
     if (!username || !password) {
       setErrorMsg('Username dan password wajib diisi.');
@@ -124,15 +142,38 @@ export default function LoginAdmin() {
       // Non-blocking log aktivitas agar redirect terasa instan
       db.addActivityLog(profile.nama, 'Login Admin', 'Berhasil masuk ke dashboard Supabase').catch(() => {});
       
+      // Reset rate-limiting counter setelah login berhasil
+      setLoginAttempts({ count: 0, lockoutUntil: 0 });
+      sessionStorage.removeItem('sorga_login_attempts');
+
       setLoading(false);
       navigate('/admin');
 
     } catch (err) {
       console.error("Login error:", err);
-      if (err.message && (err.message.includes('Failed to fetch') || err.name === 'AuthRetryableFetchError' || err.message.includes('fetch'))) {
+
+      // Rate-limiting: Increment percobaan gagal
+      const isNetworkErr = err.message && (err.message.includes('Failed to fetch') || err.name === 'AuthRetryableFetchError' || err.message.includes('fetch'));
+      if (!isNetworkErr) {
+        const newCount = loginAttempts.count + 1;
+        const newAttempts = newCount >= MAX_LOGIN_ATTEMPTS
+          ? { count: newCount, lockoutUntil: Date.now() + LOCKOUT_DURATION_MS }
+          : { count: newCount, lockoutUntil: 0 };
+        setLoginAttempts(newAttempts);
+        sessionStorage.setItem('sorga_login_attempts', JSON.stringify(newAttempts));
+
+        if (newCount >= MAX_LOGIN_ATTEMPTS) {
+          setErrorMsg(`Terlalu banyak percobaan gagal (${newCount}x). Akun dikunci selama 60 detik.`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (isNetworkErr) {
         setErrorMsg('Gagal terhubung ke server Supabase. Pastikan koneksi internet aktif dan project Supabase tidak dalam status Paused.');
       } else {
-        setErrorMsg(err.message || 'Kombinasi email/password salah.');
+        const remaining = MAX_LOGIN_ATTEMPTS - (loginAttempts.count + 1);
+        setErrorMsg((err.message || 'Kombinasi email/password salah.') + (remaining > 0 ? ` (Sisa ${remaining} percobaan)` : ''));
       }
       setLoading(false);
     }

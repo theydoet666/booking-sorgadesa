@@ -676,8 +676,8 @@ export default function PengaturanSistem() {
       return;
     }
 
-    if (newStaff.password && newStaff.password.length < 6) {
-      showAlert.warning("Kata Sandi Terlalu Pendek", "Kata sandi sementara minimal 6 karakter!");
+    if (newStaff.password && newStaff.password.length < 8) {
+      showAlert.warning("Kata Sandi Terlalu Pendek", "Kata sandi sementara minimal 8 karakter!");
       return;
     }
 
@@ -1882,7 +1882,6 @@ export default function PengaturanSistem() {
                   value={settingsForm.google_maps_iframe || ''}
                   onChange={(e) => {
                     let val = e.target.value.trim();
-                    // Jika user paste seluruh tag <iframe src="...">, otomatis ekstrak URL-nya saja
                     const match = val.match(/src=["']([^"']+)["']/);
                     if (match && match[1]) {
                       val = match[1];

@@ -23,8 +23,13 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess, userSe
       return;
     }
 
-    if (newPassword.length < 6) {
-      setErrorMsg('Kata sandi baru minimal 6 karakter demi keamanan akun.');
+    if (newPassword.length < 8) {
+      setErrorMsg('Kata sandi baru minimal 8 karakter demi keamanan akun.');
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setErrorMsg('Kata sandi baru harus mengandung minimal 1 huruf besar (A-Z) dan 1 angka (0-9).');
       return;
     }
 
